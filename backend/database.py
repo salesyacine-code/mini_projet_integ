@@ -14,7 +14,7 @@ from typing import Optional
 import aiomysql
 
 # ── S2 : MongoDB ──────────────────────────────────────────
-from motor.motor_asyncio import AsyncIOMotorClient
+from  motor.motor_asyncio import AsyncIOMotorClient
 
 # ── S3 : Neo4j ────────────────────────────────────────────
 from neo4j import GraphDatabase
