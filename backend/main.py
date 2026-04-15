@@ -324,3 +324,40 @@ async def delete_suggestion(
 @app.get("/health", tags=["Système"])
 async def health():
     return {"status": "ok", "sources": ["S1 (MySQL)", "S2 (MongoDB)", "S3 (Neo4j)"]}
+
+
+
+def _count_by_source(items: list) -> dict:
+    counts = {"S1": 0, "S2": 0, "S3": 0}
+    for item in items:
+        # On suppose que vos objets médiateur ont un champ 'source' ou 'provenance'
+        src = item.get("source") or item.get("provenance")
+        if src in counts:
+            counts[src] += 1
+    return counts
+
+@app.get("/stats", tags=["Système"], summary="Statistiques globales des sources fusionnées")
+async def get_stats():
+    """
+    Récupère les statistiques de comptage en interrogeant le médiateur.
+    """
+    async def _safe_fetch(coro):
+        try:
+            items = await coro
+            return {
+                "total": len(items), 
+                "par_source": _count_by_source(items)
+            }
+        except Exception as e:
+            return {"total": 0, "erreur": str(e)}
+
+    return {
+        "auteurs":      await _safe_fetch(mediator.get_auteurs()),
+        "themes":       await _safe_fetch(mediator.get_themes()),
+        "livres":       await _safe_fetch(mediator.get_livres()),
+        "exemplaires":  await _safe_fetch(mediator.get_exemplaires()),
+        "adherents":    await _safe_fetch(mediator.get_adherents()),
+        "enseignants":  await _safe_fetch(mediator.get_enseignants()),
+        "emprunts":     await _safe_fetch(mediator.get_emprunts()),
+        "suggestions":  await _safe_fetch(mediator.get_suggestions()),
+    }
