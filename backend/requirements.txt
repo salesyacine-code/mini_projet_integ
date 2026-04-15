@@ -1,0 +1,17 @@
+# ── Serveur ──────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+
+# ── S1 : MySQL ───────────────────────────
+aiomysql==0.2.0
+
+# ── S2 : MongoDB ─────────────────────────
+motor==3.5.0
+pymongo==4.8.0
+
+# ── S3 : Neo4j ───────────────────────────
+neo4j==5.22.0
+
+# ── Validation / sérialisation ───────────
+pydantic==2.8.0
+python-dotenv==1.0.0

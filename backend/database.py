@@ -1,126 +1,119 @@
-import os
-from contextlib import contextmanager
-from dotenv import load_dotenv
+"""
+database.py
+Gère les connexions aux 3 sources :
+  - S1 : MySQL via aiomysql (async)
+  - S2 : MongoDB via motor (async)
+  - S3 : Neo4j via neo4j (driver officiel, exécution dans threadpool)
+"""
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
-import pymongo
+import asyncio
+import os
+from typing import Optional
+
+# ── S1 : MySQL ────────────────────────────────────────────
+import aiomysql
+
+# ── S2 : MongoDB ──────────────────────────────────────────
+from motor.motor_asyncio import AsyncIOMotorClient
+
+# ── S3 : Neo4j ────────────────────────────────────────────
 from neo4j import GraphDatabase
 
-load_dotenv()
 
-# ══════════════════════════════════════════════════════════════
-# SOURCE S1 — MySQL
-# ══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  Configuration (à surcharger avec variables d'environnement)
+# ════════════════════════════════════════════════════════════
+S1_CONFIG = {
+    "host":     os.getenv("S1_HOST",     "localhost"),
+    "port":     int(os.getenv("S1_PORT", "3306")),
+    "user":     os.getenv("S1_USER",     "root"),
+    "password": os.getenv("S1_PASSWORD", ""),
+    "db":       os.getenv("S1_DB",       "bibliotheque"),
+    "autocommit": True,
+}
 
-# Utilisation de pymysql comme driver (vérifie qu'il est installé : pip install pymysql)
-_MYSQL_URL = "mysql+pymysql://{user}:{pwd}@{host}:{port}/{db}?charset=utf8mb4".format(
-    user=os.getenv("MYSQL_USER", "root"),
-    pwd=os.getenv("MYSQL_PASSWORD", ""),
-    host=os.getenv("MYSQL_HOST", "localhost"),
-    port=os.getenv("MYSQL_PORT", "3306"),
-    db=os.getenv("MYSQL_DATABASE", "bibliotheque"),
-)
+S2_URI  = os.getenv("S2_URI",  "mongodb://localhost:27017")
+S2_DB   = os.getenv("S2_DB",   "bibliotheque")
 
-_mysql_engine = create_engine(
-    _MYSQL_URL,
-    pool_pre_ping=True,  # Vérifie si la connexion est vivante avant de l'utiliser
-    pool_size=5,
-    max_overflow=10,
-    echo=False,
-)
-_MySQLSession = sessionmaker(bind=_mysql_engine)
+S3_URI  = os.getenv("S3_URI",  "bolt://localhost:7687")
+S3_USER = os.getenv("S3_USER", "neo4j")
+S3_PASS = os.getenv("S3_PASS", "password")
 
 
-@contextmanager
-def get_mysql_session() -> Session: # type: ignore
-    """Fournit une session SQLAlchemy pour S1 (MySQL)."""
-    session = _MySQLSession()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+# ════════════════════════════════════════════════════════════
+#  S1 — MySQL  (pool de connexions)
+# ════════════════════════════════════════════════════════════
+_s1_pool: Optional[aiomysql.Pool] = None
+
+async def get_s1_pool() -> aiomysql.Pool:
+    global _s1_pool
+    if _s1_pool is None:
+        _s1_pool = await aiomysql.create_pool(**S1_CONFIG)
+    return _s1_pool
+
+async def close_s1():
+    global _s1_pool
+    if _s1_pool:
+        _s1_pool.close()
+        await _s1_pool.wait_closed()
+        _s1_pool = None
 
 
-def mysql_execute(sql: str, params: dict | None = None) -> list[dict]:
-    """Exécute une requête SQL sur S1 et retourne une liste de dicts (Style GAV)."""
-    with get_mysql_session() as session:
-        # Optimisation SQLAlchemy 2.0 : .mappings() transforme directement en dictionnaire
-        result = session.execute(text(sql), params or {})
-        return [dict(row) for row in result.mappings().all()]
+# ════════════════════════════════════════════════════════════
+#  S2 — MongoDB
+# ════════════════════════════════════════════════════════════
+_s2_client: Optional[AsyncIOMotorClient] = None
+
+def get_s2_db():
+    global _s2_client
+    if _s2_client is None:
+        _s2_client = AsyncIOMotorClient(S2_URI)
+    return _s2_client[S2_DB]
+
+def close_s2():
+    global _s2_client
+    if _s2_client:
+        _s2_client.close()
+        _s2_client = None
 
 
-# ══════════════════════════════════════════════════════════════
-# SOURCE S2 — MongoDB
-# ══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  S3 — Neo4j  (driver synchrone — exécuté via run_in_executor)
+# ════════════════════════════════════════════════════════════
+_s3_driver = None
 
-_mongo_client: pymongo.MongoClient | None = None
+def get_s3_driver():
+    global _s3_driver
+    if _s3_driver is None:
+        _s3_driver = GraphDatabase.driver(S3_URI, auth=(S3_USER, S3_PASS))
+    return _s3_driver
 
+def close_s3():
+    global _s3_driver
+    if _s3_driver:
+        _s3_driver.close()
+        _s3_driver = None
 
-def get_mongo_db() -> pymongo.database.Database:
-    """Retourne le handle vers la base MongoDB S2 (singleton)."""
-    global _mongo_client
-    if _mongo_client is None:
-        _mongo_client = pymongo.MongoClient(
-            os.getenv("MONGO_URI", "mongodb://localhost:27017"),
-            serverSelectionTimeoutMS=5000,
-        )
-    return _mongo_client[os.getenv("MONGO_DATABASE", "bib")]
+async def run_s3_query(query: str, params: dict = None):
+    """Exécute une requête Cypher dans un threadpool pour ne pas bloquer asyncio."""
+    driver = get_s3_driver()
+    loop = asyncio.get_event_loop()
 
+    def _run():
+        with driver.session() as session:
+            result = session.run(query, params or {})
+            return [dict(r) for r in result]
 
-# ══════════════════════════════════════════════════════════════
-# SOURCE S3 — Neo4j
-# ══════════════════════════════════════════════════════════════
+    return await loop.run_in_executor(None, _run)
 
+async def run_s3_write(query: str, params: dict = None):
+    """Exécute une requête Cypher d'écriture (CREATE / MERGE / SET / DELETE)."""
+    driver = get_s3_driver()
+    loop = asyncio.get_event_loop()
 
+    def _run():
+        with driver.session() as session:
+            result = session.run(query, params or {})
+            return result.consume().counters.__dict__
 
-# database.py
-
-# ... (gardez vos imports SQLAlchemy et PyMongo)
-from neo4j import GraphDatabase, Driver  # <-- On importe Driver ici
-
-# ... (votre code MySQL et MongoDB)
-
-# ══════════════════════════════════════════════════════════════
-# SOURCE S3 — Neo4j
-# ══════════════════════════════════════════════════════════════
-
-# On utilise Driver (la classe) et non GraphDatabase.driver (la méthode)
-_neo4j_driver: Driver | None = None
-
-def get_neo4j_driver() -> Driver:
-    global _neo4j_driver
-    if _neo4j_driver is None:
-        _neo4j_driver = GraphDatabase.driver(
-            os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-            auth=(
-                os.getenv("NEO4J_USER", "neo4j"),
-                os.getenv("NEO4J_PASSWORD", "newpassword"),
-            ),
-        )
-    return _neo4j_driver
-
-def neo4j_execute(cypher: str, params: dict | None = None) -> list[dict]:
-    driver = get_neo4j_driver()
-    with driver.session() as session:
-        result = session.run(cypher, params or {})
-        return [record.data() for record in result]
-
-# ══════════════════════════════════════════════════════════════
-# FERMETURE PROPRE (FastAPI Lifespan)
-# ══════════════════════════════════════════════════════════════
-
-def close_all_connections():
-    """Ferme proprement tous les pools de connexion."""
-    global _mongo_client, _neo4j_driver
-    if _mongo_client:
-        _mongo_client.close()
-        _mongo_client = None
-    if _neo4j_driver:
-        _neo4j_driver.close()
-        _neo4j_driver = None
-    _mysql_engine.dispose()
+    return await loop.run_in_executor(None, _run)

@@ -1,265 +1,326 @@
 """
-main.py
-API FastAPI — Médiateur Bibliothèque v2
+main.py — Point d'entrée FastAPI
+Bibliothèque — Système de médiation de données hétérogènes
 
-Schéma global : 10 entités
-  AUTEUR · THEME · APPARTIENT_THEME · LIVRE · EXEMPLAIRE
-  PERSONNE · ADHERENT · ENSEIGNANT · EMPRUNT · SUGGESTION
+Chaque endpoint d'écriture (POST / PUT / DELETE) accepte un paramètre
+query ?source=S1|S2|S3 qui indique dans quelle source physique écrire.
+Les lectures (GET) fusionnent automatiquement les 3 sources.
 """
 
-import sys, os
-sys.path.insert(0, os.path.dirname(__file__))
-
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Literal, Optional
+from datetime import date
 
-from database import close_all_connections
-from services.mediator import (
-    view_auteurs, view_themes, view_appartient_theme,
-    view_livres, view_livre_by_isbn,
-    view_exemplaires, view_exemplaires_by_livre,
-    view_personnes, view_adherents, view_enseignants,
-    view_emprunts, view_suggestions,
-    check_health, _count_by_source,
+from database import get_s1_pool, close_s1, close_s2, close_s3
+from services.mediator import Mediator
+from models import (
+    AuteurCreate, AuteurUpdate,
+    ThemeCreate, ThemeUpdate,
+    LivreCreate, LivreUpdate,
+    ExemplaireCreate, ExemplaireUpdate,
+    AdherentCreate, AdherentUpdate,
+    EnseignantCreate, EnseignantUpdate,
+    EmpruntCreate, EmpruntUpdate,
+    SuggestionCreate, SuggestionUpdate,
+    CRUDResponse,
 )
-from schemas.global_models import (
-    Auteur, Theme, AppartientTheme, Livre, Exemplaire,
-    Personne, Adherent, Enseignant, Emprunt, Suggestion,
-    ListResponse, HealthStatus,
-)
+
+Source = Literal["S1", "S2", "S3"]
 
 
+# ════════════════════════════════════════════════════════════
+#  Lifecycle — init / teardown des connexions
+# ════════════════════════════════════════════════════════════
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await get_s1_pool()     # préchauffe le pool MySQL
     yield
-    close_all_connections()
+    close_s1()
+    close_s2()
+    close_s3()
 
 
 app = FastAPI(
-    title="Médiateur Bibliothèque",
-    description=(
-        "API GAV — Schéma global intégré (10 entités)\n\n"
-        "**Sources** : S1 MySQL · S2 MongoDB · S3 Neo4j\n\n"
-        "**Entités** : AUTEUR · THEME · APPARTIENT_THEME · LIVRE · EXEMPLAIRE · "
-        "PERSONNE · ADHERENT · ENSEIGNANT · EMPRUNT · SUGGESTION"
-    ),
-    version="2.0.0",
+    title="Bibliothèque — API de médiation",
+    description="CRUD sur 3 sources hétérogènes (MySQL, MongoDB, Neo4j) via un médiateur GAV.",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"],
-                   allow_methods=["GET"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+mediator = Mediator()
 
 
-# ══════════════════════════════════════════════════════════════
-# SYSTÈME
-# ══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  AUTEUR
+# ════════════════════════════════════════════════════════════
+@app.get("/auteurs", tags=["Auteur"], summary="Lire tous les auteurs (3 sources fusionnées)")
+async def get_auteurs():
+    return await mediator.get_auteurs()
 
-@app.get("/health", response_model=HealthStatus, tags=["Système"],
-         summary="Connectivité des 3 sources")
-def health():
-    return check_health()
-
-
-@app.get("/stats", tags=["Système"], summary="Compteurs globaux par vue")
-def stats():
-    def _c(fn, **kw):
-        try:
-            items = fn(**kw)
-            return {"total": len(items), "par_source": _count_by_source(items)}
-        except Exception as e:
-            return {"total": 0, "erreur": str(e)}
-    return {
-        "auteurs":              _c(view_auteurs),
-        "themes":               _c(view_themes),
-        "appartient_theme":     _c(view_appartient_theme),
-        "livres":               _c(view_livres),
-        "exemplaires":          _c(view_exemplaires),
-        "exemplaires_dispo":    _c(view_exemplaires, disponible_only=True),
-        "personnes":            _c(view_personnes),
-        "adherents":            _c(view_adherents),
-        "enseignants":          _c(view_enseignants),
-        "emprunts":             _c(view_emprunts),
-        "emprunts_en_cours":    _c(view_emprunts, en_cours_only=True),
-        "suggestions":          _c(view_suggestions),
-    }
-
-
-# ══════════════════════════════════════════════════════════════
-# AUTEUR
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/auteurs", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue AUTEUR — S1 AUTEUR + S2 contributeurs[role=auteur] + S3 Writer")
-def get_auteurs(source: Optional[str] = Query(None, description="S1 | S2 | S3")):
-    items = view_auteurs(source_filter=source)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Auteur(**r).model_dump() for r in items])
-
-
-# ══════════════════════════════════════════════════════════════
-# THEME
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/themes", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue THEME — S1.categorie + S2.sujet + S3 nœud Theme")
-def get_themes(source: Optional[str] = Query(None)):
-    """
-    Déduplication par nom_theme normalisé (lowercase).
-    S3 est prioritaire car les nœuds Theme ont de vrais identifiants.
-    """
-    items = view_themes(source_filter=source)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Theme(**r).model_dump() for r in items])
-
-
-# ══════════════════════════════════════════════════════════════
-# APPARTIENT_THEME  (table de liaison N-M)
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/appartient-theme", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue APPARTIENT_THEME — liaison LIVRE↔THEME (N-M)")
-def get_appartient_theme(source: Optional[str] = Query(None)):
-    """
-    S1 : 1 catégorie par livre → 1 ligne par livre.
-    S2 : 1 sujet par ouvrage  → 1 ligne par ouvrage.
-    S3 : N thèmes possibles par livre via relation BELONGS_TO.
-    """
-    items = view_appartient_theme(source_filter=source)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[AppartientTheme(**r).model_dump() for r in items])
-
-
-# ══════════════════════════════════════════════════════════════
-# LIVRE
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/livres", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue LIVRE — dédupliqués par ISBN, thèmes fusionnés")
-def get_livres(
-    source: Optional[str] = Query(None),
-    theme:  Optional[str] = Query(None, description="Filtre thème (sous-chaîne)"),
-    titre:  Optional[str] = Query(None, description="Recherche dans le titre"),
+@app.post("/auteurs", tags=["Auteur"], response_model=CRUDResponse)
+async def create_auteur(
+    body: AuteurCreate,
+    source: Source = Query(..., description="Source cible : S1, S2 ou S3")
 ):
-    """
-    Déduplication par ISBN (priorité S1).
-    `nb_pages` et `editeur` enrichis depuis S2 si absents de S1.
-    `themes[]` = liste fusionnée de tous les thèmes trouvés toutes sources.
-    """
-    items = view_livres(source_filter=source, theme=theme, titre=titre)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Livre(**r).model_dump() for r in items])
+    return await mediator.create_auteur(source, body.model_dump())
 
-
-@app.get("/livres/{isbn}", response_model=Livre, tags=["Vues GAV"],
-         summary="Livre par ISBN")
-def get_livre(isbn: str):
-    items = view_livre_by_isbn(isbn)
-    if not items:
-        raise HTTPException(404, f"Livre ISBN={isbn} introuvable")
-    return Livre(**items[0])
-
-
-@app.get("/livres/{isbn}/exemplaires", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Exemplaires d'un livre par ISBN")
-def get_exemplaires_by_livre(isbn: str):
-    items = view_exemplaires_by_livre(isbn)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Exemplaire(**r).model_dump() for r in items])
-
-
-# ══════════════════════════════════════════════════════════════
-# EXEMPLAIRE
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/exemplaires", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue EXEMPLAIRE — S1 + S2.stocks[] + S3 Copy")
-def get_exemplaires(
-    source:     Optional[str]  = Query(None),
-    disponible: Optional[bool] = Query(None, description="true = disponibles seulement"),
+@app.put("/auteurs/{auteur_id}", tags=["Auteur"], response_model=CRUDResponse)
+async def update_auteur(
+    auteur_id: str,
+    body: AuteurUpdate,
+    source: Source = Query(...)
 ):
-    items = view_exemplaires(source_filter=source, disponible_only=(disponible is True))
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Exemplaire(**r).model_dump() for r in items])
+    return await mediator.update_auteur(source, auteur_id, body.model_dump(exclude_none=True))
 
-
-# ══════════════════════════════════════════════════════════════
-# PERSONNE  (super-entité ISA)
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/personnes", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue PERSONNE — super-entité ISA (Adherent | Enseignant)")
-def get_personnes(
-    source: Optional[str] = Query(None),
-    type:   Optional[str] = Query(None, description="Adherent | Enseignant"),
+@app.delete("/auteurs/{auteur_id}", tags=["Auteur"], response_model=CRUDResponse)
+async def delete_auteur(
+    auteur_id: str,
+    source: Source = Query(...)
 ):
-    items = view_personnes(source_filter=source, type_filter=type)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Personne(**r).model_dump() for r in items])
+    return await mediator.delete_auteur(source, auteur_id)
 
 
-# ══════════════════════════════════════════════════════════════
-# ADHERENT  (sous-type ISA)
-# ══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  THEME
+# ════════════════════════════════════════════════════════════
+@app.get("/themes", tags=["Thème"], summary="Lire tous les thèmes (3 sources fusionnées)")
+async def get_themes():
+    return await mediator.get_themes()
 
-@app.get("/adherents", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue ADHERENT — sous-type ISA de PERSONNE")
-def get_adherents(source: Optional[str] = Query(None)):
-    items = view_adherents(source_filter=source)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Adherent(**r).model_dump() for r in items])
-
-
-# ══════════════════════════════════════════════════════════════
-# ENSEIGNANT  (sous-type ISA)
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/enseignants", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue ENSEIGNANT — sous-type ISA de PERSONNE")
-def get_enseignants(source: Optional[str] = Query(None)):
-    items = view_enseignants(source_filter=source)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Enseignant(**r).model_dump() for r in items])
-
-
-# ══════════════════════════════════════════════════════════════
-# EMPRUNT  (S1 + S3 — absent de S2)
-# personne_id → ADHERENT
-# ══════════════════════════════════════════════════════════════
-
-@app.get("/emprunts", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue EMPRUNT — S1 + S3 (absent de S2), personne_id→ADHERENT")
-def get_emprunts(
-    source:   Optional[str]  = Query(None, description="S1 | S3"),
-    en_cours: Optional[bool] = Query(None),
+@app.post("/themes", tags=["Thème"], response_model=CRUDResponse)
+async def create_theme(
+    body: ThemeCreate,
+    source: Source = Query(...)
 ):
-    items = view_emprunts(source_filter=source, en_cours_only=(en_cours is True))
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Emprunt(**r).model_dump() for r in items])
+    return await mediator.create_theme(source, body.model_dump())
+
+@app.put("/themes/{theme_id}", tags=["Thème"], response_model=CRUDResponse)
+async def update_theme(
+    theme_id: str,
+    body: ThemeUpdate,
+    source: Source = Query(...)
+):
+    return await mediator.update_theme(source, theme_id, body.model_dump(exclude_none=True))
+
+@app.delete("/themes/{theme_id}", tags=["Thème"], response_model=CRUDResponse)
+async def delete_theme(
+    theme_id: str,
+    source: Source = Query(...)
+):
+    return await mediator.delete_theme(source, theme_id)
 
 
-# ══════════════════════════════════════════════════════════════
-# SUGGESTION  (personne_id → ENSEIGNANT)
-# ══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  LIVRE
+# ════════════════════════════════════════════════════════════
+@app.get("/livres", tags=["Livre"], summary="Lire tous les livres (3 sources fusionnées)")
+async def get_livres():
+    return await mediator.get_livres()
 
-@app.get("/suggestions", response_model=ListResponse, tags=["Vues GAV"],
-         summary="Vue SUGGESTION — personne_id→ENSEIGNANT, livre_ref NULL pour S2")
-def get_suggestions(source: Optional[str] = Query(None)):
-    """
-    Note S2 : `livre_ref` est NULL car les suggestions sont embarquées
-    dans adherant sans référence directe au livre (seulement le titre libre).
-    """
-    items = view_suggestions(source_filter=source)
-    return ListResponse(total=len(items), source_counts=_count_by_source(items),
-                        data=[Suggestion(**r).model_dump() for r in items])
+@app.post("/livres", tags=["Livre"], response_model=CRUDResponse)
+async def create_livre(
+    body: LivreCreate,
+    source: Source = Query(...)
+):
+    return await mediator.create_livre(source, body.model_dump())
+
+@app.put("/livres/{isbn}", tags=["Livre"], response_model=CRUDResponse)
+async def update_livre(
+    isbn: str,
+    body: LivreUpdate,
+    source: Source = Query(...)
+):
+    return await mediator.update_livre(source, isbn, body.model_dump(exclude_none=True))
+
+@app.delete("/livres/{isbn}", tags=["Livre"], response_model=CRUDResponse)
+async def delete_livre(
+    isbn: str,
+    source: Source = Query(...)
+):
+    return await mediator.delete_livre(source, isbn)
 
 
-# ══════════════════════════════════════════════════════════════
-# Démarrage
-# ══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════
+#  EXEMPLAIRE
+# ════════════════════════════════════════════════════════════
+@app.get("/exemplaires", tags=["Exemplaire"])
+async def get_exemplaires():
+    return await mediator.get_exemplaires()
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+@app.post("/exemplaires", tags=["Exemplaire"], response_model=CRUDResponse)
+async def create_exemplaire(
+    body: ExemplaireCreate,
+    source: Source = Query(...),
+    isbn: Optional[str] = Query(None, description="Requis pour S2 et S3")
+):
+    data = body.model_dump()
+    if isbn:
+        data["isbn"] = isbn
+    return await mediator.create_exemplaire(source, data)
+
+@app.put("/exemplaires/{exemplaire_id}", tags=["Exemplaire"], response_model=CRUDResponse)
+async def update_exemplaire(
+    exemplaire_id: str,
+    body: ExemplaireUpdate,
+    source: Source = Query(...)
+):
+    return await mediator.update_exemplaire(source, exemplaire_id, body.model_dump(exclude_none=True))
+
+@app.delete("/exemplaires/{exemplaire_id}", tags=["Exemplaire"], response_model=CRUDResponse)
+async def delete_exemplaire(
+    exemplaire_id: str,
+    source: Source = Query(...),
+    isbn: Optional[str] = Query(None, description="Requis pour S2")
+):
+    return await mediator.delete_exemplaire(source, exemplaire_id, isbn)
+
+
+# ════════════════════════════════════════════════════════════
+#  ADHERENT
+# ════════════════════════════════════════════════════════════
+@app.get("/adherents", tags=["Adhérent"])
+async def get_adherents():
+    return await mediator.get_adherents()
+
+@app.post("/adherents", tags=["Adhérent"], response_model=CRUDResponse)
+async def create_adherent(
+    body: AdherentCreate,
+    source: Source = Query(...)
+):
+    return await mediator.create_adherent(source, body.model_dump())
+
+@app.put("/adherents/{adherent_id}", tags=["Adhérent"], response_model=CRUDResponse)
+async def update_adherent(
+    adherent_id: str,
+    body: AdherentUpdate,
+    source: Source = Query(...)
+):
+    return await mediator.update_adherent(source, adherent_id, body.model_dump(exclude_none=True))
+
+@app.delete("/adherents/{adherent_id}", tags=["Adhérent"], response_model=CRUDResponse)
+async def delete_adherent(
+    adherent_id: str,
+    source: Source = Query(...)
+):
+    return await mediator.delete_adherent(source, adherent_id)
+
+
+# ════════════════════════════════════════════════════════════
+#  ENSEIGNANT
+# ════════════════════════════════════════════════════════════
+@app.get("/enseignants", tags=["Enseignant"])
+async def get_enseignants():
+    return await mediator.get_enseignants()
+
+@app.post("/enseignants", tags=["Enseignant"], response_model=CRUDResponse)
+async def create_enseignant(
+    body: EnseignantCreate,
+    source: Source = Query(...)
+):
+    return await mediator.create_enseignant(source, body.model_dump())
+
+@app.put("/enseignants/{enseignant_id}", tags=["Enseignant"], response_model=CRUDResponse)
+async def update_enseignant(
+    enseignant_id: str,
+    body: EnseignantUpdate,
+    source: Source = Query(...)
+):
+    return await mediator.update_enseignant(source, enseignant_id, body.model_dump(exclude_none=True))
+
+@app.delete("/enseignants/{enseignant_id}", tags=["Enseignant"], response_model=CRUDResponse)
+async def delete_enseignant(
+    enseignant_id: str,
+    source: Source = Query(...)
+):
+    return await mediator.delete_enseignant(source, enseignant_id)
+
+
+# ════════════════════════════════════════════════════════════
+#  EMPRUNT  (S1 + S3 — absent de S2)
+# ════════════════════════════════════════════════════════════
+@app.get("/emprunts", tags=["Emprunt"], summary="Lire tous les emprunts (S1 + S3)")
+async def get_emprunts():
+    return await mediator.get_emprunts()
+
+@app.post("/emprunts", tags=["Emprunt"], response_model=CRUDResponse)
+async def create_emprunt(
+    body: EmpruntCreate,
+    source: Source = Query(..., description="S1 ou S3 uniquement (S2 absent)")
+):
+    return await mediator.create_emprunt(source, body.model_dump())
+
+@app.put("/emprunts/{emprunt_id}", tags=["Emprunt"], response_model=CRUDResponse)
+async def update_emprunt(
+    emprunt_id: str,
+    body: EmpruntUpdate,
+    source: Source = Query(...)
+):
+    return await mediator.update_emprunt(source, emprunt_id, body.model_dump(exclude_none=True))
+
+@app.delete("/emprunts/{emprunt_id}", tags=["Emprunt"], response_model=CRUDResponse)
+async def delete_emprunt(
+    emprunt_id: str,
+    source: Source = Query(...),
+    adherent_id: Optional[str] = Query(None, description="Requis pour S3"),
+    exemplaire_id: Optional[str] = Query(None, description="Requis pour S3")
+):
+    data = {}
+    if adherent_id:
+        data["adherent_id"] = adherent_id
+    if exemplaire_id:
+        data["exemplaire_id"] = exemplaire_id
+    return await mediator.delete_emprunt(source, emprunt_id, data)
+
+
+# ════════════════════════════════════════════════════════════
+#  SUGGESTION
+# ════════════════════════════════════════════════════════════
+@app.get("/suggestions", tags=["Suggestion"])
+async def get_suggestions():
+    return await mediator.get_suggestions()
+
+@app.post("/suggestions", tags=["Suggestion"], response_model=CRUDResponse)
+async def create_suggestion(
+    body: SuggestionCreate,
+    source: Source = Query(...)
+):
+    return await mediator.create_suggestion(source, body.model_dump())
+
+@app.put("/suggestions/{suggestion_id}", tags=["Suggestion"], response_model=CRUDResponse)
+async def update_suggestion(
+    suggestion_id: str,
+    body: SuggestionUpdate,
+    source: Source = Query(..., description="Mise à jour uniquement supportée par S1")
+):
+    return await mediator.update_suggestion(source, suggestion_id, body.model_dump(exclude_none=True))
+
+@app.delete("/suggestions/{suggestion_id}", tags=["Suggestion"], response_model=CRUDResponse)
+async def delete_suggestion(
+    suggestion_id: str,
+    source: Source = Query(...),
+    enseignant_id: Optional[str] = Query(None, description="Requis pour S2 et S3"),
+    livre_id: Optional[str] = Query(None, description="Requis pour S3"),
+    titre: Optional[str] = Query(None, description="Requis pour S2")
+):
+    data = {}
+    if enseignant_id: data["enseignant_id"] = enseignant_id
+    if livre_id:      data["livre_id"]      = livre_id
+    if titre:         data["titre"]         = titre
+    return await mediator.delete_suggestion(source, suggestion_id, data)
+
+
+# ════════════════════════════════════════════════════════════
+#  Santé
+# ════════════════════════════════════════════════════════════
+@app.get("/health", tags=["Système"])
+async def health():
+    return {"status": "ok", "sources": ["S1 (MySQL)", "S2 (MongoDB)", "S3 (Neo4j)"]}
