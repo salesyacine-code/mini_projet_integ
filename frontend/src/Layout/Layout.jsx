@@ -5,9 +5,8 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import HomeIcon from "@mui/icons-material/Home";
 import SideBar from "./SideBar";
 
-import Dashboard    from "./pages/Dashboard";
-import AuteursPage  from "./pages/AuteursPage";
-import LivresPage   from "./pages/LivresPage";
+
+import { Children } from "react";
 // … importe les autres pages réelles ici
 
 const PAGE_LABELS = {
@@ -60,20 +59,7 @@ function Layout() {
       <SideBar />
       <Box className="flex-1 flex flex-col overflow-hidden">
         <AppBreadcrumb />
-        <Box component="main" className="flex-1 overflow-y-auto p-6">
-          <Routes>
-            <Route path="/"            element={<Dashboard />} />
-            <Route path="/auteurs"     element={<AuteursPage />} />
-            <Route path="/livres"      element={<LivresPage />} />
-            <Route path="/themes"      element={<PlaceholderPage title="Gestion des Thèmes" />} />
-            <Route path="/exemplaires" element={<PlaceholderPage title="Gestion des Exemplaires" />} />
-            <Route path="/personnes"   element={<PlaceholderPage title="Adhérents et Enseignants" />} />
-            <Route path="/emprunts"    element={<PlaceholderPage title="Suivi des Emprunts" />} />
-            <Route path="/suggestions" element={<PlaceholderPage title="Suggestions d'achats" />} />
-            <Route path="/sql"         element={<PlaceholderPage title="Console SQL & Requêtes prédéfinies" />} />
-            <Route path="/health"      element={<PlaceholderPage title="État des Connexions" />} />
-          </Routes>
-        </Box>
+        {Children}
       </Box>
     </Box>
   );
