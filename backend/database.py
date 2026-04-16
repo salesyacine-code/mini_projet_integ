@@ -33,11 +33,11 @@ S1_CONFIG = {
 }
 
 S2_URI  = os.getenv("S2_URI",  "mongodb://localhost:27017")
-S2_DB   = os.getenv("S2_DB",   "bibliotheque")
+S2_DB   = os.getenv("S2_DB",   "bib")
 
-S3_URI  = os.getenv("S3_URI",  "bolt://localhost:7687")
+S3_URI  = os.getenv("S3_URI",  "neo4j://localhost:7687")
 S3_USER = os.getenv("S3_USER", "neo4j")
-S3_PASS = os.getenv("S3_PASS", "password")
+S3_PASS = os.getenv("S3_PASS", "newpassword")
 
 
 # ════════════════════════════════════════════════════════════
