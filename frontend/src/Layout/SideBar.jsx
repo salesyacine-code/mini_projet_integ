@@ -1,174 +1,160 @@
-import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
-import {
-  Drawer, List, ListItem, ListItemButton, ListItemIcon,
-  ListItemText, Divider, Typography, IconButton, Tooltip, Box, Chip
-} from "@mui/material";
-import DashboardIcon        from "@mui/icons-material/Dashboard";
-import PersonIcon           from "@mui/icons-material/Person";
-import LabelIcon            from "@mui/icons-material/Label";
-import MenuBookIcon         from "@mui/icons-material/MenuBook";
-import LibraryBooksIcon     from "@mui/icons-material/LibraryBooks";
-import GroupIcon            from "@mui/icons-material/Group";
-import SwapHorizIcon        from "@mui/icons-material/SwapHoriz";
-import LightbulbIcon        from "@mui/icons-material/Lightbulb";
-import CodeIcon             from "@mui/icons-material/Code";
-import MonitorHeartIcon     from "@mui/icons-material/MonitorHeart";
-import ChevronLeftIcon      from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon     from "@mui/icons-material/ChevronRight";
-
-const BADGE_STYLES = {
-  S1: { bg: "#EEF2FF", color: "#3730A3", border: "#C7D2FE" },
-  S2: { bg: "#F5F3FF", color: "#6D28D9", border: "#DDD6FE" },
-  S3: { bg: "#FFFBEB", color: "#92400E", border: "#FDE68A" },
-};
+import { useState } from "react";
 
 const MENU = [
   {
-    title: "Accueil",
-    items: [{ name: "Dashboard", path: "/", icon: <DashboardIcon fontSize="small" /> }],
+    group: "Tableau de bord",
+    items: [{ id:"dashboard", label:"Vue d'ensemble" }],
   },
   {
-    title: "Catalogue",
+    group: "Gestion des sources",
     items: [
-      { name: "Auteurs",      path: "/auteurs",      icon: <PersonIcon fontSize="small" />,       badges: ["S1", "S3"] },
-      { name: "Thèmes",       path: "/themes",       icon: <LabelIcon fontSize="small" />,        badges: ["S2"] },
-      { name: "Livres",       path: "/livres",       icon: <MenuBookIcon fontSize="small" />,     badges: ["S1", "S2"] },
-      { name: "Exemplaires",  path: "/exemplaires",  icon: <LibraryBooksIcon fontSize="small" />, badges: ["S1"] },
+      { id:"auteurs",     label:"Auteurs",     badge:"S1+S2+S3" },
+      { id:"themes",      label:"Thèmes",      badge:"S1+S2+S3" },
+      { id:"livres",      label:"Livres",      badge:"S1+S2+S3" },
+      { id:"exemplaires", label:"Exemplaires", badge:"S1+S2+S3" },
     ],
   },
   {
-    title: "Utilisateurs",
+    group: "Personnes",
     items: [
-      { name: "Personnes", path: "/personnes", icon: <GroupIcon fontSize="small" />, badges: ["S1"] },
+      { id:"personnes",   label:"Toutes les personnes", badge:"S1+S2+S3" },
+      { id:"adherents",   label:"Adhérents",            badge:"S1+S2+S3" },
+      { id:"enseignants", label:"Enseignants",          badge:"S1+S2+S3" },
     ],
   },
   {
-    title: "Opérations",
+    group: "Activités",
     items: [
-      { name: "Emprunts",    path: "/emprunts",    icon: <SwapHorizIcon fontSize="small" />, badges: ["S1"] },
-      { name: "Suggestions", path: "/suggestions", icon: <LightbulbIcon fontSize="small" />, badges: ["S2"] },
+      { id:"emprunts",    label:"Emprunts",    badge:"S1+S3",   badgeColor:"#FAEEDA", badgeText:"#633806" },
+      { id:"suggestions", label:"Suggestions", badge:"S1+S2+S3" },
     ],
   },
   {
-    title: "Système",
+    group: "Intégration",
     items: [
-      { name: "Requêtes SQL",  path: "/sql",    icon: <CodeIcon fontSize="small" /> },
-      { name: "État (Health)", path: "/health", icon: <MonitorHeartIcon fontSize="small" /> },
+      { id:"sql",    label:"Requêtes SQL (GAV)" },
+      { id:"lav",    label:"LAV — Local As View", highlight:true },
+      { id:"health", label:"État des sources" },
     ],
   },
 ];
 
-const COLLAPSED_W = 64;
-const EXPANDED_W  = 240;
-
-export default function SideBar() {
-  const [collapsed, setCollapsed] = useState(false);
-
+export default function Sidebar({ active, onNav, collapsed, onToggle }) {
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: collapsed ? COLLAPSED_W : EXPANDED_W,
-        flexShrink: 0,
-        transition: "width 0.25s",
-        "& .MuiDrawer-paper": {
-          width: collapsed ? COLLAPSED_W : EXPANDED_W,
-          transition: "width 0.25s",
-          overflowX: "hidden",
-          bgcolor: "#111827",
-          color: "white",
-          borderRight: "none",
-          boxSizing: "border-box",
-        },
-      }}
-    >
-      {/* Header */}
-      <Box className="flex items-center justify-between px-4 py-3 border-b border-gray-800 min-h-[56px]">
+    <aside style={{
+      width: collapsed ? 50 : 222,
+      minWidth: collapsed ? 50 : 222,
+      minHeight: "100vh",
+      background: "var(--color-background-secondary)",
+      borderRight: "0.5px solid var(--color-border-tertiary)",
+      display: "flex",
+      flexDirection: "column",
+      transition: "width 0.15s ease, min-width 0.15s ease",
+      overflow: "hidden",
+    }}>
+      {/* header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: collapsed ? "14px 11px" : "14px 14px",
+        borderBottom: "0.5px solid var(--color-border-tertiary)",
+      }}>
+        <div style={{
+          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+          background: "#534AB7",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, color: "#EEEDFE", fontWeight: 500,
+        }}>B</div>
         {!collapsed && (
-          <Typography variant="subtitle2" className="font-bold text-white truncate">
-            Projet Intégration
-          </Typography>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>
+            Bibliothèque
+          </span>
         )}
-        <IconButton
-          size="small"
-          onClick={() => setCollapsed(c => !c)}
-          className="text-gray-400 hover:text-white ml-auto"
-        >
-          {collapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
-        </IconButton>
-      </Box>
+        <button onClick={onToggle} style={{
+          marginLeft: "auto", background: "none", border: "none",
+          cursor: "pointer", padding: 4,
+          color: "var(--color-text-tertiary)", fontSize: 13, flexShrink: 0,
+        }}>
+          {collapsed ? "→" : "←"}
+        </button>
+      </div>
 
-      {/* Nav */}
-      <Box className="flex-1 overflow-y-auto py-3">
-        {MENU.map((section, si) => (
-          <Box key={si} className="mb-4">
+      {/* nav */}
+      <nav style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
+        {MENU.map(section => (
+          <div key={section.group}>
             {!collapsed && (
-              <Typography
-                variant="caption"
-                className="px-4 mb-1 block font-semibold tracking-widest uppercase text-gray-500"
-                sx={{ fontSize: 10 }}
-              >
-                {section.title}
-              </Typography>
+              <div style={{
+                fontSize: 10, fontWeight: 500, letterSpacing: "0.06em",
+                color: "var(--color-text-tertiary)",
+                textTransform: "uppercase",
+                padding: "10px 14px 3px",
+              }}>
+                {section.group}
+              </div>
             )}
-            {collapsed && si > 0 && <Divider className="border-gray-800 mx-2 mb-2" />}
+            {collapsed && <div style={{ height: 6 }} />}
 
-            <List dense disablePadding>
-              {section.items.map((item) => (
-                <ListItem key={item.path} disablePadding className="px-2">
-                  <Tooltip title={collapsed ? item.name : ""} placement="right">
-                    <ListItemButton
-                      component={NavLink}
-                      to={item.path}
-                      end={item.path === "/"}
-                      className="rounded-lg mb-0.5"
-                      sx={{
-                        minHeight: 40,
-                        px: collapsed ? 1.5 : 1.5,
-                        borderRadius: "8px",
-                        color: "#D1D5DB",
-                        "&:hover": { bgcolor: "#1F2937", color: "white" },
-                        "&.active": { bgcolor: "#2563EB", color: "white" },
-                      }}
-                    >
-                      <ListItemIcon sx={{ minWidth: collapsed ? 0 : 36, color: "inherit" }}>
-                        {item.icon}
-                      </ListItemIcon>
-                      {!collapsed && (
-                        <>
-                          <ListItemText
-                            primary={item.name}
-                            primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }}
-                          />
-                          {item.badges && (
-                            <Box className="flex gap-1 ml-1">
-                              {item.badges.map(b => {
-                                const s = BADGE_STYLES[b];
-                                return (
-                                  <Chip
-                                    key={b} label={b} size="small"
-                                    sx={{
-                                      height: 18, fontSize: 10, fontFamily: "monospace",
-                                      bgcolor: s.bg, color: s.color,
-                                      border: `1px solid ${s.border}`,
-                                      "& .MuiChip-label": { px: "5px" },
-                                    }}
-                                  />
-                                );
-                              })}
-                            </Box>
-                          )}
-                        </>
-                      )}
-                    </ListItemButton>
-                  </Tooltip>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
+            {section.items.map(item => (
+              <button
+                key={item.id}
+                onClick={() => onNav(item.id)}
+                style={{
+                  display: "flex", alignItems: "center",
+                  gap: 8, width: "100%",
+                  padding: collapsed ? "7px 0" : "7px 14px",
+                  justifyContent: collapsed ? "center" : "flex-start",
+                  background: active === item.id
+                    ? "var(--color-background-primary)"
+                    : item.highlight && active !== item.id
+                    ? "#EEEDFE22"
+                    : "none",
+                  border: "none",
+                  borderLeft: active === item.id && !collapsed
+                    ? "2px solid #534AB7" : "2px solid transparent",
+                  cursor: "pointer",
+                  color: active === item.id
+                    ? "var(--color-text-primary)"
+                    : "var(--color-text-secondary)",
+                  fontSize: 12,
+                }}
+              >
+                <span style={{
+                  width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
+                  background: active === item.id
+                    ? "#534AB7"
+                    : item.highlight ? "#534AB755" : "var(--color-border-secondary)",
+                }} />
+                {!collapsed && (
+                  <>
+                    <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap" }}>
+                      {item.label}
+                    </span>
+                    {item.badge && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 500,
+                        background: item.badgeColor || "#EEEDFE",
+                        color: item.badgeText || "#3C3489",
+                        borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap",
+                      }}>
+                        {item.badge}
+                      </span>
+                    )}
+                    {item.highlight && !item.badge && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 500,
+                        background: "#EEEDFE", color: "#3C3489",
+                        borderRadius: 4, padding: "1px 5px",
+                      }}>
+                        NEW
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
         ))}
-      </Box>
-    </Drawer>
+      </nav>
+    </aside>
   );
 }

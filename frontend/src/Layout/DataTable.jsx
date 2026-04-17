@@ -1,61 +1,48 @@
 import React, { useState } from "react";
 import {
-  Box,
-  Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Button,
-  Stack,
-  Typography,
+  Box, Paper, Table, TableHead, TableRow, TableCell,
+  TableBody, Button, Stack, Typography,
 } from "@mui/material";
 
-const DataTable = ({ columns, data, actions, onSourceFilterChange }) => {
+const DataTable = ({ columns = [], data = [], actions, onSourceFilterChange }) => {
   const [activeSource, setActiveSource] = useState("ALL");
 
   const sources = [
     { id: "ALL", label: "Toutes les sources" },
-    { id: "S1", label: "Source 1 (BDD)" },
-    { id: "S2", label: "Source 2 (RDF)" },
-    { id: "S3", label: "Source 3 (Externe)" },
+    { id: "S1",  label: "Source 1 (BDD)" },
+    { id: "S2",  label: "Source 2 (RDF)" },
+    { id: "S3",  label: "Source 3 (Externe)" },
   ];
 
   const handleSourceChange = (sourceId) => {
     setActiveSource(sourceId);
-    if (onSourceFilterChange) {
-      onSourceFilterChange(sourceId);
-    }
+    onSourceFilterChange?.(sourceId);
   };
+
+  const safeData = Array.isArray(data) ? data : [];
 
   const filteredData =
     activeSource === "ALL"
-      ? data
-      : data.filter(
+      ? safeData
+      : safeData.filter(
           (row) =>
             row.source === activeSource ||
-            (row.sources && row.sources.includes(activeSource))
+            (Array.isArray(row.sources) && row.sources.includes(activeSource))
         );
 
   return (
     <Paper elevation={2} sx={{ borderRadius: 2, overflow: "hidden" }}>
-      
+
       {/* Filters */}
       <Box
-        px={2}
-        py={1.5}
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        borderBottom="1px solid #e0e0e0"
-        bgcolor="#fafafa"
+        px={2} py={1.5}
+        display="flex" justifyContent="space-between" alignItems="center"
+        borderBottom="1px solid #e0e0e0" bgcolor="#fafafa"
       >
         <Stack direction="row" spacing={1}>
           {sources.map((src) => (
             <Button
-              key={src.id}
-              size="small"
+              key={src.id} size="small"
               variant={activeSource === src.id ? "contained" : "outlined"}
               onClick={() => handleSourceChange(src.id)}
             >
@@ -74,15 +61,11 @@ const DataTable = ({ columns, data, actions, onSourceFilterChange }) => {
         <Table>
           <TableHead sx={{ bgcolor: "#f5f5f5" }}>
             <TableRow>
-              {columns.map((col, index) => (
-                <TableCell key={index} sx={{ fontWeight: 600 }}>
-                  {col.header}
-                </TableCell>
+              {columns.map((col, i) => (
+                <TableCell key={i} sx={{ fontWeight: 600 }}>{col.header}</TableCell>
               ))}
               {actions && (
-                <TableCell align="right" sx={{ fontWeight: 600 }}>
-                  Actions
-                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 600 }}>Actions</TableCell>
               )}
             </TableRow>
           </TableHead>
@@ -90,22 +73,14 @@ const DataTable = ({ columns, data, actions, onSourceFilterChange }) => {
           <TableBody>
             {filteredData.length > 0 ? (
               filteredData.map((row, rowIndex) => (
-                <TableRow
-                  key={rowIndex}
-                  hover
-                >
+                <TableRow key={rowIndex} hover>
                   {columns.map((col, colIndex) => (
                     <TableCell key={colIndex}>
-                      {col.render
-                        ? col.render(row[col.key], row)
-                        : row[col.key]}
+                      {col.render ? col.render(row[col.key], row) : row[col.key] ?? "—"}
                     </TableCell>
                   ))}
-
                   {actions && (
-                    <TableCell align="right">
-                      {actions(row)}
-                    </TableCell>
+                    <TableCell align="right">{actions(row)}</TableCell>
                   )}
                 </TableRow>
               ))
@@ -113,11 +88,10 @@ const DataTable = ({ columns, data, actions, onSourceFilterChange }) => {
               <TableRow>
                 <TableCell
                   colSpan={columns.length + (actions ? 1 : 0)}
-                  align="center"
-                  sx={{ py: 6 }}
+                  align="center" sx={{ py: 6 }}
                 >
                   <Typography variant="body2" color="text.secondary">
-                    📭 Aucune donnée ne correspond à cette source.
+                    Aucune donnée ne correspond à cette source.
                   </Typography>
                 </TableCell>
               </TableRow>

@@ -29,31 +29,37 @@ export const api = {
   appartientTheme: (p="") => req("GET", `/appartient-theme${p}`),
 
   // CRUD S1
-  createAuteur:     (d) => req("POST",   "/auteurs", d),
-  updateAuteur:     (id,d)=>req("PUT",   `/auteurs/${id}`, d),
-  deleteAuteur:     (id)=> req("DELETE", `/auteurs/${id}`),
+  createAuteur:     (d)     => req("POST",   "/auteurs", d),
+  updateAuteur:     (id, d) => req("PUT",    `/auteurs/${id}`, d),
+  deleteAuteur:     (id)    => req("DELETE", `/auteurs/${id}`),
 
-  createLivre:      (d) => req("POST",   "/livres", d),
-  updateLivre:      (id,d)=>req("PUT",   `/livres/${id}`, d),
-  deleteLivre:      (id)=> req("DELETE", `/livres/${id}`),
+  createLivre:      (d)     => req("POST",   "/livres", d),
+  updateLivre:      (id, d) => req("PUT",    `/livres/${id}`, d),
+  deleteLivre:      (id)    => req("DELETE", `/livres/${id}`),
 
-  createAdherent:   (d) => req("POST",   "/adherents", d),
-  updateAdherent:   (id,d)=>req("PUT",   `/adherents/${id}`, d),
-  deleteAdherent:   (id)=> req("DELETE", `/adherents/${id}`),
+  createAdherent:   (d)     => req("POST",   "/adherents", d),
+  updateAdherent:   (id, d) => req("PUT",    `/adherents/${id}`, d),
+  deleteAdherent:   (id)    => req("DELETE", `/adherents/${id}`),
 
-  createEnseignant: (d) => req("POST",   "/enseignants", d),
-  updateEnseignant: (id,d)=>req("PUT",   `/enseignants/${id}`, d),
-  deleteEnseignant: (id)=> req("DELETE", `/enseignants/${id}`),
+  createEnseignant: (d)     => req("POST",   "/enseignants", d),
+  updateEnseignant: (id, d) => req("PUT",    `/enseignants/${id}`, d),
+  deleteEnseignant: (id)    => req("DELETE", `/enseignants/${id}`),
 
-  createExemplaire: (d) => req("POST",   "/exemplaires", d),
-  deleteExemplaire: (id)=> req("DELETE", `/exemplaires/${id}`),
+  createExemplaire: (d)     => req("POST",   "/exemplaires", d),
+  deleteExemplaire: (id)    => req("DELETE", `/exemplaires/${id}`),
 
-  createEmprunt:    (d) => req("POST",   "/emprunts", d),
-  updateEmprunt:    (id,d)=>req("PUT",   `/emprunts/${id}`, d),
+  createEmprunt:    (d)     => req("POST",   "/emprunts", d),
+  updateEmprunt:    (id, d) => req("PUT",    `/emprunts/${id}`, d),
 
-  createSuggestion: (d) => req("POST",   "/suggestions", d),
-  deleteSuggestion: (id)=> req("DELETE", `/suggestions/${id}`),
+  createSuggestion: (d)     => req("POST",   "/suggestions", d),
+  deleteSuggestion: (id)    => req("DELETE", `/suggestions/${id}`),
 
   // SQL
   runSQL: (sql) => req("POST", "/query/sql", { sql }),
+
+  // LAV — Local As View
+  lavSchema:   ()       => req("GET",  "/lav/schema"),
+  lavEntity:   (e, p="") => req("GET", `/lav/${e}${p}`),
+  lavQuery:    (body)   => req("POST", "/lav/query", body),
+  lavSource:   (src)    => req("GET",  `/lav/sources/${src}`),
 };
