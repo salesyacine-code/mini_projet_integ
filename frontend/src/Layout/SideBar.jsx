@@ -1,160 +1,168 @@
-import { useState } from "react";
+import { Box, Typography, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Tooltip, Collapse } from "@mui/material";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import PersonIcon from "@mui/icons-material/Person";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
+import LocalLibraryIcon from "@mui/icons-material/LocalLibrary";
+import GroupIcon from "@mui/icons-material/Group";
+import SchoolIcon from "@mui/icons-material/School";
+import StorageIcon from "@mui/icons-material/Storage";
+import SettingsInputComponentIcon from "@mui/icons-material/SettingsInputComponent";
+import HealingIcon from "@mui/icons-material/Healing";
+import EmojiPeopleIcon from "@mui/icons-material/EmojiPeople";
+import StyleIcon from "@mui/icons-material/Style";
+import CategoryIcon from "@mui/icons-material/Category";
+import ChatIcon from "@mui/icons-material/Chat";
+import CompareIcon from "@mui/icons-material/Compare";
 
 const MENU = [
   {
     group: "Tableau de bord",
-    items: [{ id:"dashboard", label:"Vue d'ensemble" }],
+    items: [{ id:"dashboard", label:"Vue d'ensemble", icon: <DashboardIcon /> }],
   },
   {
     group: "Gestion des sources",
     items: [
-      { id:"auteurs",     label:"Auteurs",     badge:"S1+S2+S3" },
-      { id:"themes",      label:"Thèmes",      badge:"S1+S2+S3" },
-      { id:"livres",      label:"Livres",      badge:"S1+S2+S3" },
-      { id:"exemplaires", label:"Exemplaires", badge:"S1+S2+S3" },
+      { id:"auteurs",     label:"Auteurs",     badge:"S1+S2+S3", icon: <PersonIcon /> },
+      { id:"themes",      label:"Thèmes",      badge:"S1+S2+S3", icon: <StyleIcon /> },
+      { id:"livres",      label:"Livres",      badge:"S1+S2+S3", icon: <MenuBookIcon /> },
+      { id:"exemplaires", label:"Exemplaires", badge:"S1+S2+S3", icon: <CategoryIcon /> },
     ],
   },
   {
     group: "Personnes",
     items: [
-      { id:"personnes",   label:"Toutes les personnes", badge:"S1+S2+S3" },
-      { id:"adherents",   label:"Adhérents",            badge:"S1+S2+S3" },
-      { id:"enseignants", label:"Enseignants",          badge:"S1+S2+S3" },
+      { id:"personnes",   label:"Toutes les personnes", badge:"S1+S2+S3", icon: <GroupIcon /> },
+      { id:"adherents",   label:"Adhérents",            badge:"S1+S2+S3", icon: <EmojiPeopleIcon /> },
+      { id:"enseignants", label:"Enseignants",          badge:"S1+S2+S3", icon: <SchoolIcon /> },
     ],
   },
   {
     group: "Activités",
     items: [
-      { id:"emprunts",    label:"Emprunts",    badge:"S1+S3",   badgeColor:"#FAEEDA", badgeText:"#633806" },
-      { id:"suggestions", label:"Suggestions", badge:"S1+S2+S3" },
+      { id:"emprunts",    label:"Emprunts",    badge:"S1+S3",   badgeColor:"#f59e0b", badgeText:"#fff", icon: <LocalLibraryIcon /> },
+      { id:"suggestions", label:"Suggestions", badge:"S1+S2+S3", icon: <ChatIcon /> },
     ],
   },
   {
     group: "Intégration",
     items: [
-      { id:"sql",    label:"Requêtes SQL (GAV)" },
-      { id:"lav",    label:"LAV — Local As View", highlight:true },
-      { id:"health", label:"État des sources" },
+      { id:"sql",     label:"Requêtes SQL",        icon: <StorageIcon /> },
+      { id:"sources", label:"Données par Source",   icon: <CompareIcon />, badge:"S1·S2·S3", highlight:true },
+      { id:"lav",     label:"LAV — Local As View",  highlight:true, icon: <SettingsInputComponentIcon /> },
+      { id:"health",  label:"État des sources",     icon: <HealingIcon /> },
     ],
   },
 ];
 
 export default function Sidebar({ active, onNav, collapsed, onToggle }) {
   return (
-    <aside style={{
-      width: collapsed ? 50 : 222,
-      minWidth: collapsed ? 50 : 222,
-      minHeight: "100vh",
-      background: "var(--color-background-secondary)",
-      borderRight: "0.5px solid var(--color-border-tertiary)",
+    <Box sx={{
+      width: collapsed ? 64 : 260,
+      flexShrink: 0,
+      bgcolor: "#0f172a", // Dark background
+      color: "#f1f5f9",
+      borderRight: "1px solid #1e293b",
       display: "flex",
       flexDirection: "column",
-      transition: "width 0.15s ease, min-width 0.15s ease",
+      transition: "width 0.2s ease",
       overflow: "hidden",
     }}>
-      {/* header */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8,
-        padding: collapsed ? "14px 11px" : "14px 14px",
-        borderBottom: "0.5px solid var(--color-border-tertiary)",
+      {/* Header */}
+      <Box sx={{
+        display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between",
+        p: 2,
+        borderBottom: "1px solid #1e293b",
       }}>
-        <div style={{
-          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
-          background: "#534AB7",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 12, color: "#EEEDFE", fontWeight: 500,
-        }}>B</div>
         {!collapsed && (
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>
+          <Typography variant="subtitle1" fontWeight={600} color="white" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <MenuBookIcon color="primary" />
             Bibliothèque
-          </span>
+          </Typography>
         )}
-        <button onClick={onToggle} style={{
-          marginLeft: "auto", background: "none", border: "none",
-          cursor: "pointer", padding: 4,
-          color: "var(--color-text-tertiary)", fontSize: 13, flexShrink: 0,
-        }}>
-          {collapsed ? "→" : "←"}
-        </button>
-      </div>
+        <IconButton onClick={onToggle} size="small" sx={{ color: "#94a3b8" }}>
+          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+        </IconButton>
+      </Box>
 
-      {/* nav */}
-      <nav style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
+      {/* Nav */}
+      <Box sx={{ flex: 1, overflowY: "auto", py: 2 }}>
         {MENU.map(section => (
-          <div key={section.group}>
+          <Box key={section.group} sx={{ mb: 2 }}>
             {!collapsed && (
-              <div style={{
-                fontSize: 10, fontWeight: 500, letterSpacing: "0.06em",
-                color: "var(--color-text-tertiary)",
-                textTransform: "uppercase",
-                padding: "10px 14px 3px",
-              }}>
+              <Typography variant="overline" sx={{ px: 3, color: "#64748b", fontWeight: 600, letterSpacing: 1 }}>
                 {section.group}
-              </div>
+              </Typography>
             )}
-            {collapsed && <div style={{ height: 6 }} />}
-
-            {section.items.map(item => (
-              <button
-                key={item.id}
-                onClick={() => onNav(item.id)}
-                style={{
-                  display: "flex", alignItems: "center",
-                  gap: 8, width: "100%",
-                  padding: collapsed ? "7px 0" : "7px 14px",
-                  justifyContent: collapsed ? "center" : "flex-start",
-                  background: active === item.id
-                    ? "var(--color-background-primary)"
-                    : item.highlight && active !== item.id
-                    ? "#EEEDFE22"
-                    : "none",
-                  border: "none",
-                  borderLeft: active === item.id && !collapsed
-                    ? "2px solid #534AB7" : "2px solid transparent",
-                  cursor: "pointer",
-                  color: active === item.id
-                    ? "var(--color-text-primary)"
-                    : "var(--color-text-secondary)",
-                  fontSize: 12,
-                }}
-              >
-                <span style={{
-                  width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-                  background: active === item.id
-                    ? "#534AB7"
-                    : item.highlight ? "#534AB755" : "var(--color-border-secondary)",
-                }} />
-                {!collapsed && (
-                  <>
-                    <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap" }}>
-                      {item.label}
-                    </span>
-                    {item.badge && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 500,
-                        background: item.badgeColor || "#EEEDFE",
-                        color: item.badgeText || "#3C3489",
-                        borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap",
+            
+            <List disablePadding>
+              {section.items.map(item => {
+                const isActive = active === item.id;
+                
+                const btn = (
+                  <ListItemButton
+                    onClick={() => onNav(item.id)}
+                    sx={{
+                      py: 1, px: collapsed ? 2 : 3,
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      borderLeft: "3px solid transparent",
+                      borderColor: isActive ? "primary.main" : "transparent",
+                      bgcolor: isActive ? "rgba(37, 99, 235, 0.1)" : "transparent",
+                      "&:hover": {
+                        bgcolor: "rgba(255, 255, 255, 0.05)",
+                      }
+                    }}
+                  >
+                    <ListItemIcon sx={{ 
+                      minWidth: collapsed ? 0 : 36, 
+                      color: isActive ? "primary.main" : "#94a3b8",
+                      justifyContent: "center"
+                    }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    
+                    {!collapsed && (
+                      <ListItemText 
+                        primary={item.label} 
+                        primaryTypographyProps={{ 
+                          fontSize: '0.875rem', 
+                          fontWeight: isActive ? 600 : 500,
+                          color: isActive ? "white" : "#cbd5e1"
+                        }} 
+                      />
+                    )}
+                    
+                    {!collapsed && item.badge && (
+                      <Box sx={{ 
+                        fontSize: '0.65rem', 
+                        fontWeight: 600,
+                        bgcolor: item.badgeColor || "rgba(255,255,255,0.1)", 
+                        color: item.badgeText || "#94a3b8",
+                        px: 1, py: 0.5, borderRadius: 1 
                       }}>
                         {item.badge}
-                      </span>
+                      </Box>
                     )}
-                    {item.highlight && !item.badge && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 500,
-                        background: "#EEEDFE", color: "#3C3489",
-                        borderRadius: 4, padding: "1px 5px",
-                      }}>
-                        NEW
-                      </span>
-                    )}
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+                  </ListItemButton>
+                );
+
+                return collapsed ? (
+                  <Tooltip key={item.id} title={item.label} placement="right" arrow>
+                    <ListItem disablePadding>
+                      {btn}
+                    </ListItem>
+                  </Tooltip>
+                ) : (
+                  <ListItem disablePadding key={item.id}>
+                    {btn}
+                  </ListItem>
+                );
+              })}
+            </List>
+          </Box>
         ))}
-      </nav>
-    </aside>
+      </Box>
+    </Box>
   );
 }

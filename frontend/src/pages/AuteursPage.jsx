@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../Api";
 import DataTable from "../Layout/DataTable";
+import PageHeader from "../Layout/PageHeader";
 import {
   Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, CircularProgress, IconButton, Stack
+  TextField, Button, CircularProgress, IconButton, Stack, Select, MenuItem, InputLabel, FormControl
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -27,6 +28,7 @@ export default function AuteursPage() {
   const [form, setForm]       = useState(EMPTY);
   const [editId, setEditId]   = useState(null);
   const [saving, setSaving]   = useState(false);
+  const [destSource, setDestSource] = useState("S1");
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
@@ -45,21 +47,22 @@ export default function AuteursPage() {
       nom: row.nom || "", prenom: row.prenom || "",
       nationalite: row.nationalite || "", date_naissance: row.date_naissance || "",
     });
+    setDestSource(row._source || "S1");
     setEditId(row.auteur_id);
     setOpen(true);
   };
 
   const handleDelete = async (row) => {
     if (!window.confirm(`Supprimer ${row.nom} ${row.prenom} ?`)) return;
-    try { await api.deleteAuteur(row.auteur_id); load(); }
+    try { await api.deleteAuteur(row.auteur_id, row._source); load(); }
     catch (e) { alert(e.message); }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (editId) await api.updateAuteur(editId, form);
-      else        await api.createAuteur(form);
+      if (editId) await api.updateAuteur(editId, form, destSource);
+      else        await api.createAuteur(form, destSource);
       setOpen(false); load();
     } catch (e) { alert(e.message); }
     finally { setSaving(false); }
@@ -79,16 +82,16 @@ export default function AuteursPage() {
   );
 
   return (
-    <Box className="px-7 py-6 relative">
-      <Typography variant="h5" className="font-medium mb-1">Auteurs</Typography>
-      <Typography variant="body2" className="text-gray-500 mb-5">
-        Vue globale AUTEUR — S1 (AUTEUR) · S2 (contributeurs[role=auteur]) · S3 (Writer)
-      </Typography>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
+      <PageHeader 
+        title="Auteurs" 
+        subtitle="Vue globale AUTEUR — S1 (AUTEUR) · S2 (contributeurs[role=auteur]) · S3 (Writer)" 
+      />
 
       <DataTable
         columns={COLS} rows={rows} loading={loading} error={error}
-        onEdit={r  => r.source === "S1" ? openEdit(r)    : alert("Édition uniquement sur S1")}
-        onDelete={r => r.source === "S1" ? handleDelete(r) : alert("Suppression uniquement sur S1")}
+        onEdit={openEdit}
+        onDelete={handleDelete}
         onAdd={openAdd} addLabel="Nouvel auteur"
         sourceFilter={source} onSourceFilter={setSource}
       />
@@ -105,6 +108,19 @@ export default function AuteursPage() {
 
         <DialogContent dividers>
           <Stack spacing={2} className="pt-1">
+            <FormControl fullWidth size="small">
+              <InputLabel>Source de destination</InputLabel>
+              <Select
+                value={destSource}
+                label="Source de destination"
+                onChange={(e) => setDestSource(e.target.value)}
+                disabled={!!editId} // Optionnel: on ne peut changer la source que lors de la création
+              >
+                <MenuItem value="S1">S1 (MySQL)</MenuItem>
+                <MenuItem value="S2">S2 (MongoDB)</MenuItem>
+                <MenuItem value="S3">S3 (Neo4j)</MenuItem>
+              </Select>
+            </FormControl>
             {field("nom",            "Nom *")}
             {field("prenom",         "Prénom")}
             {field("nationalite",    "Nationalité")}

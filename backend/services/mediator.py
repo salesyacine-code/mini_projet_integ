@@ -1,16 +1,24 @@
 """
 services/mediator.py
 
-Le médiateur a deux rôles :
+Le médiateur a deux rôles (GAV) :
 
 1. LECTURE (GET) :
    - Envoie la requête aux sources concernées en parallèle (asyncio.gather)
    - Fusionne + déduplique les résultats par clé naturelle (isbn, email, code_barre…)
+   -> Ceci applique l'étape 4 (Fusion et Restructuration) du processus d'intégration.
 
 2. ÉCRITURE (POST / PUT / DELETE) :
    - Reçoit la source cible choisie par le frontend (S1, S2, S3)
    - Délègue l'opération au wrapper correspondant
    - Retourne une CRUDResponse standardisée
+   -> Les wrappers appliquent l'étape 3 (Mise en conformité) en sens inverse.
+
+Rappel du Processus d'Intégration implémenté :
+ 1. Pré-intégration
+ 2. Comparaison des schémas
+ 3. Mise en conformité des schémas
+ 4. Fusion et Restructuration
 """
 
 import asyncio
@@ -26,6 +34,7 @@ Source = Literal["S1", "S2", "S3"]
 ENTITY_SOURCES: dict[str, list[Source]] = {
     "AUTEUR":      ["S1", "S2", "S3"],
     "THEME":       ["S1", "S2", "S3"],
+    "APPARTIENT_THEME": ["S1", "S2", "S3"],
     "LIVRE":       ["S1", "S2", "S3"],
     "EXEMPLAIRE":  ["S1", "S2", "S3"],
     "ADHERENT":    ["S1", "S2", "S3"],
@@ -147,6 +156,25 @@ class Mediator:
             return self._err(source, str(e))
 
     # ════════════════════════════════════════════════════════
+    #  APPARTIENT_THEME
+    # ════════════════════════════════════════════════════════
+    async def get_appartient_theme(self) -> list[dict]:
+        tasks = [self.s1.get_appartient_theme(), self.s2.get_appartient_theme(), self.s3.get_appartient_theme()]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Deduplication manuelle par tuple (livre_ref, theme_ref) car _merge ne gère qu'une clé
+        seen = set()
+        merged = []
+        for batch in results:
+            if isinstance(batch, Exception):
+                continue
+            for item in (batch or []):
+                key = (item.get("livre_ref"), item.get("theme_ref"))
+                if key not in seen:
+                    seen.add(key)
+                    merged.append(item)
+        return merged
+
+    # ════════════════════════════════════════════════════════
     #  LIVRE
     # ════════════════════════════════════════════════════════
     async def get_livres(self) -> list[dict]:
@@ -214,6 +242,35 @@ class Mediator:
             return self._ok(source, {}, "Exemplaire supprimé") if ok else self._err(source, "Non trouvé")
         except Exception as e:
             return self._err(source, str(e))
+
+    # ════════════════════════════════════════════════════════
+    #  PERSONNES (union adhérents + enseignants)
+    # ════════════════════════════════════════════════════════
+    async def get_personnes(self) -> list[dict]:
+        """Vue unifiée PERSONNE = ADHERENT ∪ ENSEIGNANT des 3 sources."""
+        adh_tasks = [self.s1.get_adherents(), self.s2.get_adherents(), self.s3.get_adherents()]
+        ens_tasks = [self.s1.get_enseignants(), self.s2.get_enseignants(), self.s3.get_enseignants()]
+        all_results = await asyncio.gather(
+            *adh_tasks, *ens_tasks, return_exceptions=True
+        )
+        adh_results = list(all_results[:3])
+        ens_results = list(all_results[3:])
+        adherents   = self._merge("ADHERENT",   adh_results)
+        enseignants = self._merge("ENSEIGNANT", ens_results)
+        # Marque le type et fusionne par email
+        for p in adherents:
+            p.setdefault("type", "adherent")
+        for p in enseignants:
+            p.setdefault("type", "enseignant")
+        seen, merged = set(), []
+        for p in adherents + enseignants:
+            key = p.get("email") or p.get("personne_id")
+            if key and key in seen:
+                continue
+            if key:
+                seen.add(key)
+            merged.append(p)
+        return merged
 
     # ════════════════════════════════════════════════════════
     #  ADHERENT

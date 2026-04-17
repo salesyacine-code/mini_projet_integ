@@ -110,7 +110,13 @@ def build_registry():
     Construit le registre LAV après import des wrappers.
     Appelé une seule fois au démarrage de l'application.
     """
-    from wrappers import s1_wrapper, s2_wrapper, s3_wrapper
+    from wrappers.wrapper_s1 import WrapperS1
+    from wrappers.wrapper_s2 import WrapperS2
+    from wrappers.wrapper_s3 import WrapperS3
+
+    s1_wrapper = WrapperS1()
+    s2_wrapper = WrapperS2()
+    s3_wrapper = WrapperS3()
 
     # ══════════════════════════════════════════════════════════
     # ENTITÉ GLOBALE : AUTEUR
@@ -204,6 +210,52 @@ def build_registry():
         attributes=[
             AttributeMapping("theme_id",  "theme_id"),
             AttributeMapping("nom_theme", "name", transform=str.lower),
+        ],
+    ))
+
+    # ══════════════════════════════════════════════════════════
+    # ENTITÉ GLOBALE : APPARTIENT_THEME
+    # ══════════════════════════════════════════════════════════
+
+    register(LAVSourceView(
+        entity="APPARTIENT_THEME",
+        source_name="S1",
+        description="S1 lie un livre à un thème (categorie).",
+        completeness="partial",
+        fetch_fn=s1_wrapper.get_appartient_theme,
+        conditions=[],
+        attributes=[
+            AttributeMapping("livre_ref", "livre_ref"),
+            AttributeMapping("theme_ref", "nom_theme"),
+            AttributeMapping("nom_theme", "nom_theme"),
+        ],
+    ))
+
+    register(LAVSourceView(
+        entity="APPARTIENT_THEME",
+        source_name="S2",
+        description="S2 lie un livre à un thème (sujet).",
+        completeness="partial",
+        fetch_fn=s2_wrapper.get_appartient_theme,
+        conditions=[],
+        attributes=[
+            AttributeMapping("livre_ref", "livre_ref"),
+            AttributeMapping("theme_ref", "nom_theme"),
+            AttributeMapping("nom_theme", "nom_theme"),
+        ],
+    ))
+
+    register(LAVSourceView(
+        entity="APPARTIENT_THEME",
+        source_name="S3",
+        description="S3 lie un livre à un thème via la relation BELONGS_TO.",
+        completeness="partial",
+        fetch_fn=s3_wrapper.get_appartient_theme,
+        conditions=[],
+        attributes=[
+            AttributeMapping("livre_ref", "livre_ref"),
+            AttributeMapping("theme_ref", "nom_theme"),
+            AttributeMapping("nom_theme", "nom_theme"),
         ],
     ))
 

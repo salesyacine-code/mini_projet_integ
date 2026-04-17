@@ -2,6 +2,28 @@
 schemas/global_models.py
 Modèles Pydantic du schéma global intégré — version finale (10 entités).
 
+======================================================================
+ PRINCIPES D'INTÉGRATION DE SCHÉMAS IMPOSÉS DANS CE PROJET
+======================================================================
+Ce schéma global est le résultat des 4 étapes du processus d'intégration :
+
+1. Pré-intégration :
+   - Analyse des 3 sources (S1: MySQL, S2: MongoDB, S3: Neo4j).
+   - Identification des modèles locaux (relationnel, document, graphe).
+
+2. Comparaison des schémas :
+   - Découverte des conflits sémantiques (ex: 'categorie' dans S1 vs 'sujet' dans S2).
+   - Identification des entités communes (LIVRE, AUTEUR) et de leurs différences de représentation.
+
+3. Mise en conformité des schémas :
+   - Standardisation des types (ex: nb_pages casté de String à Int).
+   - Homogénéisation des noms (ex: nom_theme au lieu de categorie/sujet).
+
+4. Fusion et Restructuration :
+   - Création de super-entités/sous-entités (ISA: PERSONNE -> ADHERENT, ENSEIGNANT).
+   - Restructuration des relations (APPARTIENT_THEME).
+======================================================================
+
 Schéma global :
   AUTEUR
   THEME

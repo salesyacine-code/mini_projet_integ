@@ -29,30 +29,30 @@ export const api = {
   appartientTheme: (p="") => req("GET", `/appartient-theme${p}`),
 
   // CRUD S1
-  createAuteur:     (d)     => req("POST",   "/auteurs", d),
-  updateAuteur:     (id, d) => req("PUT",    `/auteurs/${id}`, d),
-  deleteAuteur:     (id)    => req("DELETE", `/auteurs/${id}`),
+  createAuteur:     (d, s="S1")     => req("POST",   `/auteurs?source=${s}`, d),
+  updateAuteur:     (id, d, s="S1") => req("PUT",    `/auteurs/${id}?source=${s}`, d),
+  deleteAuteur:     (id, s="S1")    => req("DELETE", `/auteurs/${id}?source=${s}`),
 
-  createLivre:      (d)     => req("POST",   "/livres", d),
-  updateLivre:      (id, d) => req("PUT",    `/livres/${id}`, d),
-  deleteLivre:      (id)    => req("DELETE", `/livres/${id}`),
+  createLivre:      (d, s="S1")     => req("POST",   `/livres?source=${s}`, d),
+  updateLivre:      (id, d, s="S1") => req("PUT",    `/livres/${id}?source=${s}`, d),
+  deleteLivre:      (id, s="S1")    => req("DELETE", `/livres/${id}?source=${s}`),
 
-  createAdherent:   (d)     => req("POST",   "/adherents", d),
-  updateAdherent:   (id, d) => req("PUT",    `/adherents/${id}`, d),
-  deleteAdherent:   (id)    => req("DELETE", `/adherents/${id}`),
+  createAdherent:   (d, s="S1")     => req("POST",   `/adherents?source=${s}`, d),
+  updateAdherent:   (id, d, s="S1") => req("PUT",    `/adherents/${id}?source=${s}`, d),
+  deleteAdherent:   (id, s="S1")    => req("DELETE", `/adherents/${id}?source=${s}`),
 
-  createEnseignant: (d)     => req("POST",   "/enseignants", d),
-  updateEnseignant: (id, d) => req("PUT",    `/enseignants/${id}`, d),
-  deleteEnseignant: (id)    => req("DELETE", `/enseignants/${id}`),
+  createEnseignant: (d, s="S1")     => req("POST",   `/enseignants?source=${s}`, d),
+  updateEnseignant: (id, d, s="S1") => req("PUT",    `/enseignants/${id}?source=${s}`, d),
+  deleteEnseignant: (id, s="S1")    => req("DELETE", `/enseignants/${id}?source=${s}`),
 
-  createExemplaire: (d)     => req("POST",   "/exemplaires", d),
-  deleteExemplaire: (id)    => req("DELETE", `/exemplaires/${id}`),
+  createExemplaire: (d, s="S1")     => req("POST",   `/exemplaires?source=${s}`, d),
+  deleteExemplaire: (id, s="S1")    => req("DELETE", `/exemplaires/${id}?source=${s}`),
 
-  createEmprunt:    (d)     => req("POST",   "/emprunts", d),
-  updateEmprunt:    (id, d) => req("PUT",    `/emprunts/${id}`, d),
+  createEmprunt:    (d, s="S1")     => req("POST",   `/emprunts?source=${s}`, d),
+  updateEmprunt:    (id, d, s="S1") => req("PUT",    `/emprunts/${id}?source=${s}`, d),
 
-  createSuggestion: (d)     => req("POST",   "/suggestions", d),
-  deleteSuggestion: (id)    => req("DELETE", `/suggestions/${id}`),
+  createSuggestion: (d, s="S1")     => req("POST",   `/suggestions?source=${s}`, d),
+  deleteSuggestion: (id, s="S1")    => req("DELETE", `/suggestions/${id}?source=${s}`),
 
   // SQL
   runSQL: (sql) => req("POST", "/query/sql", { sql }),

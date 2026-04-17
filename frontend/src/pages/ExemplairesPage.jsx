@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../Api";
 import DataTable from "../Layout/DataTable";
-import Modal, { FormField, FormActions } from "../Layout/Modal";
+import PageHeader from "../Layout/PageHeader";
 
 // MUI
 import {
@@ -12,7 +12,18 @@ import {
   TextField,
   Select,
   MenuItem,
+  InputLabel,
+  FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  IconButton,
+  Stack,
+  CircularProgress
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
 const COLS = [
   { key:"exemplaire_id", label:"ID", width:60 },
@@ -23,7 +34,7 @@ const COLS = [
   { key:"source", label:"Source", width:70 },
 ];
 
-const EMPTY = { livre_id:"", code_barre:"", etat:"bon", disponibilite:true };
+const EMPTY = { livre_ref:"", code_barre:"", etat:"bon", disponibilite:true };
 const ETATS = ["neuf","bon","use","abime"];
 
 export default function ExemplairesPage() {
@@ -32,9 +43,10 @@ export default function ExemplairesPage() {
   const [error, setError] = useState(null);
   const [source, setSource] = useState(null);
   const [dispoOnly, setDispoOnly] = useState(false);
-  const [modal, setModal] = useState(null);
+  const [openAdd, setOpenAdd] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [destSource, setDestSource] = useState("S1");
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
@@ -52,9 +64,8 @@ export default function ExemplairesPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (row) => {
-    if (row.source !== "S1") return alert("Suppression uniquement sur S1");
     if (!window.confirm(`Supprimer ${row.code_barre} ?`)) return;
-    try { await api.deleteExemplaire(row.exemplaire_id); load(); }
+    try { await api.deleteExemplaire(row.exemplaire_id, row._source); load(); }
     catch(e) { alert(e.message); }
   };
 
@@ -64,72 +75,80 @@ export default function ExemplairesPage() {
       await api.createExemplaire({
         ...form,
         disponibilite: form.disponibilite === true || form.disponibilite === "true",
-      });
-      setModal(null); load();
+      }, destSource);
+      setOpenAdd(false); load();
     } catch(e) { alert(e.message); }
     finally { setSaving(false); }
   };
 
-  const F = (key) => ({
+  const fieldProps = (key) => ({
     value: form[key] ?? "",
     onChange: e => setForm(f => ({ ...f, [key]: e.target.value })),
   });
 
   return (
-    <Box p={3} position="relative">
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
       
-      {/* Title */}
-      <Typography variant="h5" gutterBottom>
-        Exemplaires
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary" mb={2}>
-        Vue globale EXEMPLAIRE — S1 · S2 (stocks[]) · S3 (Copy). Création uniquement sur S1.
-      </Typography>
+      <PageHeader 
+        title="Exemplaires" 
+        subtitle="Vue globale EXEMPLAIRE — S1 · S2 (stocks[]) · S3 (Copy). Création uniquement sur S1." 
+      />
 
       {/* Filter */}
-      <Box mb={2}>
+      <Box sx={{ mb: 3 }}>
         <FormControlLabel
           control={
             <Checkbox
               checked={dispoOnly}
               onChange={(e) => setDispoOnly(e.target.checked)}
+              color="primary"
             />
           }
-          label="Disponibles seulement"
+          label={<Typography variant="body2" fontWeight={500}>Disponibles seulement</Typography>}
         />
       </Box>
 
       {/* Table */}
       <DataTable
         columns={COLS}
-        data={rows}
-        actions={(row) => (
-          row.source === "S1" && (
-            <button onClick={() => handleDelete(row)}>
-              Supprimer
-            </button>
-          )
-        )}
-        onSourceFilterChange={setSource}
+        rows={rows}
+        loading={loading}
+        error={error}
+        onDelete={handleDelete}
+        onAdd={() => { setForm(EMPTY); setOpenAdd(true); }}
+        addLabel="Nouvel exemplaire"
+        sourceFilter={source}
+        onSourceFilter={setSource}
       />
 
-      {/* Modal */}
-      {modal === "add" && (
-        <Modal
-          isOpen={true}
-          title="Nouvel exemplaire (S1)"
-          onClose={() => setModal(null)}
-        >
-          <FormField label="ID du livre (S1) *">
-            <TextField fullWidth size="small" {...F("livre_id")} />
-          </FormField>
+      {/* Dialog */}
+      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="xs" fullWidth>
+        <DialogTitle className="flex items-center justify-between pr-3">
+          <Typography variant="subtitle1" fontWeight={600}>
+            Nouvel exemplaire
+          </Typography>
+          <IconButton size="small" onClick={() => setOpenAdd(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
 
-          <FormField label="Code-barres *">
-            <TextField fullWidth size="small" {...F("code_barre")} />
-          </FormField>
-
-          <FormField label="État">
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Source de destination</InputLabel>
+              <Select
+                value={destSource}
+                label="Source de destination"
+                onChange={(e) => setDestSource(e.target.value)}
+              >
+                <MenuItem value="S1">S1 (MySQL)</MenuItem>
+                <MenuItem value="S2">S2 (MongoDB)</MenuItem>
+                <MenuItem value="S3">S3 (Neo4j)</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField label="Référence du livre (ID ou ISBN) *" fullWidth size="small" {...fieldProps("livre_ref")} />
+            <TextField label="Code-barres *" fullWidth size="small" {...fieldProps("code_barre")} />
+            
             <Select
               fullWidth
               size="small"
@@ -140,9 +159,7 @@ export default function ExemplairesPage() {
                 <MenuItem key={e} value={e}>{e}</MenuItem>
               ))}
             </Select>
-          </FormField>
 
-          <FormField label="Disponibilité">
             <Select
               fullWidth
               size="small"
@@ -157,16 +174,25 @@ export default function ExemplairesPage() {
               <MenuItem value="true">Disponible</MenuItem>
               <MenuItem value="false">Emprunté</MenuItem>
             </Select>
-          </FormField>
+          </Stack>
+        </DialogContent>
 
-          <FormActions
-            onCancel={() => setModal(null)}
-            onSubmit={handleSave}
-            loading={saving}
-            submitLabel="Créer"
-          />
-        </Modal>
-      )}
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setOpenAdd(false)} color="inherit" sx={{ textTransform: "none" }}>
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disableElevation
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={14} color="inherit" /> : null}
+            sx={{ textTransform: "none" }}
+          >
+            Créer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

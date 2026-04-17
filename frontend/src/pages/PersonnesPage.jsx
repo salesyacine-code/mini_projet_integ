@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../Api";
 import DataTable from "../Layout/DataTable";
-import Modal, { FormField, FormActions } from "../Layout/Modal";
+import PageHeader from "../Layout/PageHeader";
 
 // MUI
 import {
@@ -9,7 +9,19 @@ import {
   Typography,
   Button,
   TextField,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  IconButton,
+  Stack,
+  CircularProgress
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
 const COLS_ADH = [
   { key:"personne_id", label:"ID", width:80 },
@@ -31,7 +43,7 @@ const COLS_ENS = [
   { key:"source", label:"Source", width:70 },
 ];
 
-const EMPTY_ADH = { nom:"", prenom:"", email:"", telephone:"", date_inscription:"" };
+const EMPTY_ADH = { nom:"", prenom:"", email:"", telephone:"", date_inscription:"", cursus:"", annee:"" };
 const EMPTY_ENS = { nom:"", prenom:"", departement:"", email:"" };
 
 export default function PersonnesPage({ subtype }) {
@@ -41,10 +53,11 @@ export default function PersonnesPage({ subtype }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [source, setSource] = useState(null);
-  const [modal, setModal] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
   const [form, setForm] = useState(isAdh ? EMPTY_ADH : EMPTY_ENS);
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [destSource, setDestSource] = useState("S1");
 
   const fetchFn = isAdh ? api.adherents : api.enseignants;
   const createFn = isAdh ? api.createAdherent : api.createEnseignant;
@@ -69,7 +82,7 @@ export default function PersonnesPage({ subtype }) {
   const openAdd = () => {
     setForm(isAdh ? EMPTY_ADH : EMPTY_ENS);
     setEditId(null);
-    setModal("edit");
+    setOpenDialog(true);
   };
 
   const openEdit = (row) => {
@@ -80,6 +93,8 @@ export default function PersonnesPage({ subtype }) {
         email: row.email || "",
         telephone: row.telephone || "",
         date_inscription: row.date_inscription || "",
+        cursus: row.cursus || "",
+        annee: row.annee || "",
       });
     } else {
       setForm({
@@ -89,16 +104,15 @@ export default function PersonnesPage({ subtype }) {
         email: row.email || "",
       });
     }
+    setDestSource(row._source || "S1");
     setEditId(row.personne_id);
-    setModal("edit");
+    setOpenDialog(true);
   };
 
   const handleDelete = async (row) => {
-    if (row.source !== "S1") return alert("Suppression uniquement sur S1");
     if (!window.confirm(`Supprimer ${row.nom} ${row.prenom} ?`)) return;
-
     try {
-      await deleteFn(row.personne_id);
+      await deleteFn(row.personne_id, row._source);
       load();
     } catch(e) {
       alert(e.message);
@@ -108,10 +122,9 @@ export default function PersonnesPage({ subtype }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (editId) await updateFn(editId, form);
-      else await createFn(form);
-
-      setModal(null);
+      if (editId) await updateFn(editId, form, destSource);
+      else await createFn(form, destSource);
+      setOpenDialog(false);
       load();
     } catch(e) {
       alert(e.message);
@@ -120,7 +133,7 @@ export default function PersonnesPage({ subtype }) {
     }
   };
 
-  const F = (key) => ({
+  const fieldProps = (key) => ({
     value: form[key] || "",
     onChange: e => setForm(f => ({ ...f, [key]: e.target.value })),
   });
@@ -131,89 +144,86 @@ export default function PersonnesPage({ subtype }) {
     : "Sous-type ISA ENSEIGNANT — S1 · S2 · S3";
 
   return (
-    <Box p={3}>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
       
-      {/* Title */}
-      <Typography variant="h5" gutterBottom>
-        {title}
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        {sub}
-      </Typography>
-
-      {/* Add Button */}
-      <Button
-        variant="contained"
-        sx={{ mb: 2 }}
-        onClick={openAdd}
-      >
-        {isAdh ? "Nouvel adhérent" : "Nouvel enseignant"}
-      </Button>
+      <PageHeader 
+        title={title} 
+        subtitle={sub} 
+      />
 
       {/* Table */}
       <DataTable
         columns={isAdh ? COLS_ADH : COLS_ENS}
-        data={rows}
-        actions={(row) => (
-          row.source === "S1" && (
-            <>
-              <Button size="small" onClick={() => openEdit(row)}>
-                Modifier
-              </Button>
-              <Button size="small" color="error" onClick={() => handleDelete(row)}>
-                Supprimer
-              </Button>
-            </>
-          )
-        )}
-        onSourceFilterChange={setSource}
+        rows={rows}
+        loading={loading}
+        error={error}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+        onAdd={openAdd}
+        addLabel={isAdh ? "Nouvel adhérent" : "Nouvel enseignant"}
+        sourceFilter={source}
+        onSourceFilter={setSource}
       />
 
-      {/* Modal */}
-      {modal === "edit" && (
-        <Modal
-          isOpen={true}
-          title={editId ? "Modifier" : (isAdh ? "Nouvel adhérent" : "Nouvel enseignant")}
-          onClose={() => setModal(null)}
-        >
-          <FormField label="Nom *">
-            <TextField fullWidth size="small" {...F("nom")} />
-          </FormField>
+      {/* Dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle className="flex items-center justify-between pr-3">
+          <Typography variant="subtitle1" fontWeight={600}>
+            {editId ? "Modifier" : (isAdh ? "Nouvel adhérent" : "Nouvel enseignant")}
+          </Typography>
+          <IconButton size="small" onClick={() => setOpenDialog(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
 
-          <FormField label="Prénom">
-            <TextField fullWidth size="small" {...F("prenom")} />
-          </FormField>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Source de destination</InputLabel>
+              <Select
+                value={destSource}
+                label="Source de destination"
+                onChange={(e) => setDestSource(e.target.value)}
+                disabled={!!editId}
+              >
+                <MenuItem value="S1">S1 (MySQL)</MenuItem>
+                <MenuItem value="S2">S2 (MongoDB)</MenuItem>
+                <MenuItem value="S3">S3 (Neo4j)</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField label="Nom *" fullWidth size="small" {...fieldProps("nom")} />
+            <TextField label="Prénom" fullWidth size="small" {...fieldProps("prenom")} />
+            <TextField label="Email" type="email" fullWidth size="small" {...fieldProps("email")} />
 
-          <FormField label="Email">
-            <TextField type="email" fullWidth size="small" {...F("email")} />
-          </FormField>
+            {isAdh ? (
+              <>
+                <TextField label="Téléphone" fullWidth size="small" {...fieldProps("telephone")} />
+                <TextField label="Date d'inscription" type="date" fullWidth size="small" InputLabelProps={{ shrink: true }} {...fieldProps("date_inscription")} />
+                <TextField label="Cursus" fullWidth size="small" {...fieldProps("cursus")} />
+                <TextField label="Année" type="number" fullWidth size="small" {...fieldProps("annee")} />
+              </>
+            ) : (
+              <TextField label="Département" fullWidth size="small" {...fieldProps("departement")} />
+            )}
+          </Stack>
+        </DialogContent>
 
-          {isAdh ? (
-            <>
-              <FormField label="Téléphone">
-                <TextField fullWidth size="small" {...F("telephone")} />
-              </FormField>
-
-              <FormField label="Date d'inscription">
-                <TextField type="date" fullWidth size="small" {...F("date_inscription")} />
-              </FormField>
-            </>
-          ) : (
-            <FormField label="Département">
-              <TextField fullWidth size="small" {...F("departement")} />
-            </FormField>
-          )}
-
-          <FormActions
-            onCancel={() => setModal(null)}
-            onSubmit={handleSave}
-            loading={saving}
-            submitLabel={editId ? "Mettre à jour" : "Créer"}
-          />
-        </Modal>
-      )}
-
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setOpenDialog(false)} color="inherit" sx={{ textTransform: "none" }}>
+            Annuler
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            variant="contained" 
+            disableElevation
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={14} color="inherit" /> : null}
+            sx={{ textTransform: "none" }}
+          >
+            {editId ? "Mettre à jour" : "Créer"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

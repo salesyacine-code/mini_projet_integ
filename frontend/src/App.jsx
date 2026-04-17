@@ -4,8 +4,6 @@ import {
   Typography,
   AppBar,
   Toolbar,
-  CssBaseline,
-  Paper,
 } from "@mui/material";
 
 import Sidebar from "./Layout/SideBar";
@@ -21,6 +19,7 @@ import EmpruntsPage from "./pages/EmpruntsPage";
 import SuggestionsPage from "./pages/SuggestionsPage";
 import SqlPage from "./pages/SqlPage";
 import HealthPage from "./pages/HealthPage";
+import SourcesPage from "./pages/SourcesPage";
 
 const TITLES = {
   dashboard: "Tableau de bord",
@@ -35,6 +34,7 @@ const TITLES = {
   suggestions: "Suggestions",
   sql: "Requêtes SQL",
   health: "État des sources",
+  sources: "Données par Source",
 };
 
 function renderPage(page) {
@@ -51,6 +51,7 @@ function renderPage(page) {
     case "suggestions": return <SuggestionsPage />;
     case "sql": return <SqlPage />;
     case "health": return <HealthPage />;
+    case "sources": return <SourcesPage />;
     default: return <Dashboard />;
   }
 }
@@ -60,10 +61,8 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f5f5f5" }}>
-      <CssBaseline />
-
-      {/* Sidebar (your custom component kept) */}
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      {/* Sidebar */}
       <Sidebar
         active={page}
         onNav={setPage}
@@ -79,9 +78,10 @@ export default function App() {
           position="static"
           elevation={0}
           sx={{
-            bgcolor: "white",
+            bgcolor: "background.paper",
             color: "text.primary",
-            borderBottom: "1px solid #e0e0e0",
+            borderBottom: 1,
+            borderColor: "divider",
           }}
         >
           <Toolbar variant="dense">
@@ -89,9 +89,9 @@ export default function App() {
               Bibliothèque
             </Typography>
 
-            <Typography sx={{ mx: 1 }}>›</Typography>
+            <Typography sx={{ mx: 1, color: 'text.disabled' }}>›</Typography>
 
-            <Typography variant="body2" fontWeight={600}>
+            <Typography variant="body2" fontWeight={600} color="primary.main">
               {TITLES[page] || page}
             </Typography>
           </Toolbar>
@@ -104,6 +104,7 @@ export default function App() {
             flex: 1,
             overflowY: "auto",
             p: 0,
+            bgcolor: "background.default",
           }}
         >
           {renderPage(page)}

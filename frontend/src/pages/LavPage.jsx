@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { api } from "../api";
+import { api } from "../Api";
+import PageHeader from "../Layout/PageHeader";
+
+// MUI
+import { Box, Typography } from "@mui/material";
 
 // ── constantes ────────────────────────────────────────────────
 
@@ -21,9 +25,9 @@ const ENTITY_ATTRS = {
 };
 
 const SRC_COLOR = {
-  S1: { bg:"#EEEDFE", text:"#3C3489", dot:"#534AB7" },
-  S2: { bg:"#E1F5EE", text:"#085041", dot:"#0F6E56" },
-  S3: { bg:"#FAECE7", text:"#712B13", dot:"#993C1D" },
+  S1: { bg:"#eff6ff", text:"#1d4ed8", dot:"#2563eb" },
+  S2: { bg:"#ecfdf5", text:"#047857", dot:"#059669" },
+  S3: { bg:"#fff7ed", text:"#c2410c", dot:"#ea580c" },
 };
 
 const PRESET_QUERIES = [
@@ -74,11 +78,11 @@ const PRESET_QUERIES = [
 // ── sous-composants ────────────────────────────────────────────
 
 function SrcBadge({ src }) {
-  const c = SRC_COLOR[src] || { bg:"#F1EFE8", text:"#444" };
+  const c = SRC_COLOR[src] || { bg:"#f1f5f9", text:"#475569" };
   return (
     <span style={{
-      fontSize:11, fontWeight:500, padding:"2px 7px",
-      borderRadius:4, background:c.bg, color:c.text,
+      fontSize:11, fontWeight:600, padding:"3px 8px",
+      borderRadius:6, background:c.bg, color:c.text,
     }}>{src}</span>
   );
 }
@@ -89,18 +93,18 @@ function PlanLine({ line }) {
   const isSection = line.startsWith("─");
   const isIndent  = line.startsWith("   └─");
 
-  let color = "var(--color-text-secondary)";
-  if (isCheck) color = "#27500A";
-  if (isCross) color = "#791F1F";
-  if (isSection) color = "var(--color-text-tertiary)";
-  if (isIndent)  color = "var(--color-text-tertiary)";
+  let color = "#64748b";
+  if (isCheck) color = "#16a34a";
+  if (isCross) color = "#dc2626";
+  if (isSection) color = "#94a3b8";
+  if (isIndent)  color = "#94a3b8";
 
   return (
     <div style={{
-      fontSize: 12, lineHeight: 1.7,
+      fontSize: 13, lineHeight: 1.8,
       color,
-      fontFamily: isIndent || isSection ? "var(--font-mono)" : "inherit",
-      paddingLeft: isIndent ? 12 : 0,
+      fontFamily: isIndent || isSection ? "monospace" : "inherit",
+      paddingLeft: isIndent ? 16 : 0,
     }}>
       {line}
     </div>
@@ -112,30 +116,30 @@ function CoverageMap({ map }) {
   return (
     <div style={{ marginTop:16 }}>
       <div style={{
-        fontSize:11, fontWeight:500, color:"var(--color-text-tertiary)",
-        textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8,
+        fontSize:12, fontWeight:600, color:"#64748b",
+        textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:12,
       }}>
         Couverture des attributs
       </div>
       <div style={{
         display:"grid",
-        gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))",
-        gap:6,
+        gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))",
+        gap:8,
       }}>
         {Object.entries(map).map(([attr, srcs]) => (
           <div key={attr} style={{
             display:"flex", alignItems:"center", justifyContent:"space-between",
-            padding:"5px 10px",
-            background:"var(--color-background-secondary)",
-            borderRadius:6, fontSize:12,
+            padding:"8px 12px",
+            background:"#f8fafc", border: "1px solid #e2e8f0",
+            borderRadius:8, fontSize:13,
           }}>
-            <span style={{ fontFamily:"var(--font-mono)", color:"var(--color-text-primary)" }}>
+            <span style={{ fontFamily:"monospace", color:"#0f172a", fontWeight: 500 }}>
               {attr}
             </span>
-            <div style={{ display:"flex", gap:4 }}>
+            <div style={{ display:"flex", gap:6 }}>
               {srcs.length > 0
                 ? srcs.map(s => <SrcBadge key={s} src={s} />)
-                : <span style={{ fontSize:11, color:"var(--color-text-tertiary)" }}>—</span>
+                : <span style={{ fontSize:12, color:"#94a3b8" }}>—</span>
               }
             </div>
           </div>
@@ -147,65 +151,66 @@ function CoverageMap({ map }) {
 
 function ResultTable({ columns, rows }) {
   if (!rows || rows.length === 0) return (
-    <div style={{ textAlign:"center", padding:"24px 0", color:"var(--color-text-tertiary)", fontSize:13 }}>
+    <div style={{ textAlign:"center", padding:"32px 0", color:"#64748b", fontSize:14 }}>
       Aucun résultat
     </div>
   );
 
   return (
     <div style={{ overflowX:"auto" }}>
-      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
-        <thead>
-          <tr style={{ borderBottom:"0.5px solid var(--color-border-secondary)" }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+        <thead style={{ background: "#f8fafc" }}>
+          <tr>
             {columns.map(col => (
               <th key={col} style={{
-                textAlign:"left", padding:"7px 10px",
-                fontWeight:500, fontSize:11,
-                color:"var(--color-text-secondary)",
+                textAlign:"left", padding:"12px 16px",
+                fontWeight:600, fontSize:12,
+                color:"#475569",
                 whiteSpace:"nowrap",
-                fontFamily: "var(--font-mono)",
+                fontFamily: "monospace",
+                borderBottom: "1px solid #e2e8f0"
               }}>{col}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} style={{ borderBottom:"0.5px solid var(--color-border-tertiary)" }}>
+            <tr key={i} style={{ borderBottom:"1px solid #f1f5f9" }}>
               {columns.map(col => {
                 const val = row[col];
                 if (col === "source") return (
-                  <td key={col} style={{ padding:"7px 10px" }}>
+                  <td key={col} style={{ padding:"10px 16px" }}>
                     <SrcBadge src={val} />
                   </td>
                 );
                 if (col === "disponibilite") return (
-                  <td key={col} style={{ padding:"7px 10px" }}>
+                  <td key={col} style={{ padding:"10px 16px" }}>
                     <span style={{
-                      fontSize:11, padding:"2px 7px", borderRadius:4, fontWeight:500,
-                      background: val ? "#EAF3DE" : "#FCEBEB",
-                      color: val ? "#27500A" : "#791F1F",
+                      fontSize:12, padding:"3px 8px", borderRadius:6, fontWeight:600,
+                      background: val ? "#dcfce7" : "#fee2e2",
+                      color: val ? "#16a34a" : "#dc2626",
                     }}>
                       {val ? "Disponible" : "Emprunté"}
                     </span>
                   </td>
                 );
                 if (col === "themes" && Array.isArray(val)) return (
-                  <td key={col} style={{ padding:"7px 10px" }}>
+                  <td key={col} style={{ padding:"10px 16px" }}>
                     {val.map((t,ti) => (
                       <span key={ti} style={{
-                        fontSize:10, padding:"1px 6px", borderRadius:4,
-                        background:"#EEEDFE", color:"#3C3489", marginRight:3,
+                        fontSize:11, padding:"2px 8px", borderRadius:6,
+                        background:"#eff6ff", color:"#1d4ed8", marginRight:4, fontWeight: 500
                       }}>{t}</span>
                     ))}
                   </td>
                 );
                 return (
                   <td key={col} style={{
-                    padding:"7px 10px", color:"var(--color-text-primary)",
-                    whiteSpace:"nowrap", maxWidth:200,
+                    padding:"10px 16px", color:"#0f172a",
+                    whiteSpace:"nowrap", maxWidth:240,
                     overflow:"hidden", textOverflow:"ellipsis",
                   }}>
-                    {val == null ? <span style={{ color:"var(--color-text-tertiary)" }}>null</span> : String(val)}
+                    {val == null ? <span style={{ color:"#94a3b8", fontStyle: "italic" }}>null</span> : String(val)}
                   </td>
                 );
               })}
@@ -290,55 +295,54 @@ export default function LavPage() {
     : [];
 
   return (
-    <div style={{ padding:"24px 28px" }}>
-      <h2 style={{ marginBottom:4 }}>Approche LAV — Local As View</h2>
-      <p style={{ color:"var(--color-text-secondary)", fontSize:13, marginBottom:6 }}>
-        Chaque source locale est une <strong>vue partielle</strong> du schéma global.
-        Le moteur de réécriture sélectionne automatiquement les sources pertinentes
-        selon les attributs demandés, puis fusionne les résultats.
-      </p>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
+      <PageHeader 
+        title="Approche LAV — Local As View" 
+        subtitle={<>Chaque source locale est une <strong>vue partielle</strong> du schéma global. Le moteur de réécriture sélectionne automatiquement les sources pertinentes selon les attributs demandés, puis fusionne les résultats.</>} 
+      />
 
       <div style={{
-        display:"inline-flex", gap:12, alignItems:"center",
-        background:"var(--color-background-secondary)",
-        border:"0.5px solid var(--color-border-tertiary)",
-        borderRadius:8, padding:"8px 14px", marginBottom:20, fontSize:12,
-        color:"var(--color-text-secondary)",
+        display:"inline-flex", gap:16, alignItems:"center",
+        background:"#f8fafc",
+        border:"1px solid #e2e8f0",
+        borderRadius:12, padding:"12px 20px", marginBottom:24, fontSize:13,
+        color:"#475569",
       }}>
-        <span style={{ color:"var(--color-text-tertiary)" }}>GAV vs LAV</span>
-        <span>GAV = schéma global défini comme union des sources</span>
-        <span style={{ color:"var(--color-border-secondary)" }}>|</span>
-        <span>LAV = chaque source décrite comme restriction du schéma global</span>
+        <span style={{ color:"#94a3b8", fontWeight: 600 }}>GAV vs LAV</span>
+        <span><strong>GAV</strong> = schéma global défini comme union des sources</span>
+        <span style={{ color:"#cbd5e1" }}>|</span>
+        <span><strong>LAV</strong> = chaque source décrite comme restriction du schéma global</span>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"260px 1fr", gap:16, alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:24, alignItems:"start" }}>
 
         {/* ── panneau gauche : requête ── */}
-        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
 
           {/* prédéfinies */}
           <div style={{
-            background:"var(--color-background-secondary)",
-            border:"0.5px solid var(--color-border-tertiary)",
-            borderRadius:8, overflow:"hidden",
+            background:"white",
+            border:"1px solid #e2e8f0",
+            borderRadius:12, overflow:"hidden",
           }}>
             <div style={{
-              padding:"8px 12px", fontSize:10, fontWeight:500,
-              color:"var(--color-text-tertiary)", textTransform:"uppercase",
-              letterSpacing:"0.06em",
-              borderBottom:"0.5px solid var(--color-border-tertiary)",
+              padding:"12px 16px", fontSize:11, fontWeight:600,
+              color:"#64748b", textTransform:"uppercase",
+              letterSpacing:"0.05em",
+              borderBottom:"1px solid #e2e8f0",
+              background:"#f8fafc"
             }}>
               Requêtes prédéfinies
             </div>
             {PRESET_QUERIES.map((p,i) => (
               <button key={i} onClick={() => applyPreset(i)} style={{
                 display:"block", width:"100%", textAlign:"left",
-                padding:"8px 12px", fontSize:12, border:"none",
-                borderBottom:"0.5px solid var(--color-border-tertiary)",
-                cursor:"pointer",
-                background: presetIdx===i ? "#EEEDFE" : "transparent",
-                color: presetIdx===i ? "#3C3489" : "var(--color-text-secondary)",
-                fontWeight: presetIdx===i ? 500 : 400,
+                padding:"12px 16px", fontSize:13, border:"none",
+                borderBottom:"1px solid #f1f5f9",
+                cursor:"pointer", transition: "all 0.2s",
+                background: presetIdx===i ? "#eff6ff" : "white",
+                color: presetIdx===i ? "#1d4ed8" : "#475569",
+                fontWeight: presetIdx===i ? 600 : 500,
               }}>
                 {p.label}
               </button>
@@ -347,38 +351,42 @@ export default function LavPage() {
 
           {/* builder */}
           <div style={{
-            background:"var(--color-background-primary)",
-            border:"0.5px solid var(--color-border-secondary)",
-            borderRadius:8, padding:"14px",
+            background:"white",
+            border:"1px solid #e2e8f0",
+            borderRadius:12, padding:"20px",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
           }}>
             {/* entité */}
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", display:"block", marginBottom:5 }}>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
                 Entité globale
               </label>
               <select
                 value={entity}
                 onChange={e => { setEntity(e.target.value); setAttrs([]); setResult(null); setPresetIdx(null); }}
-                style={{ width:"100%" }}
+                style={{ 
+                  width:"100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", 
+                  fontSize: 14, outline: "none", color: "#0f172a", fontFamily: "inherit"
+                }}
               >
                 {ENTITIES.map(e => <option key={e}>{e}</option>)}
               </select>
             </div>
 
             {/* attributs */}
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", display:"block", marginBottom:6 }}>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
                 Attributs demandés
-                <span style={{ fontWeight:400, marginLeft:4 }}>(vide = tous)</span>
+                <span style={{ fontWeight:400, marginLeft:6, color: "#94a3b8" }}>(vide = tous)</span>
               </label>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
                 {allAttrs.map(a => (
                   <button key={a} onClick={() => toggleAttr(a)} style={{
-                    fontSize:11, padding:"3px 8px", borderRadius:5, cursor:"pointer",
-                    background: attrs.includes(a) ? "#534AB7" : "var(--color-background-secondary)",
-                    color: attrs.includes(a) ? "#fff" : "var(--color-text-secondary)",
-                    border: attrs.includes(a) ? "none" : "0.5px solid var(--color-border-secondary)",
-                    fontFamily:"var(--font-mono)",
+                    fontSize:12, padding:"4px 10px", borderRadius:6, cursor:"pointer",
+                    background: attrs.includes(a) ? "#2563eb" : "#f1f5f9",
+                    color: attrs.includes(a) ? "#fff" : "#475569",
+                    border: attrs.includes(a) ? "1px solid #2563eb" : "1px solid #e2e8f0",
+                    fontFamily:"monospace", transition: "all 0.15s", fontWeight: 500
                   }}>
                     {a}
                   </button>
@@ -387,44 +395,45 @@ export default function LavPage() {
             </div>
 
             {/* filtre */}
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", display:"block", marginBottom:5 }}>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
                 Filtre (optionnel)
               </label>
-              <div style={{ display:"flex", gap:6 }}>
+              <div style={{ display:"flex", gap:8 }}>
                 <input
                   value={filterKey}
                   onChange={e => setFilterKey(e.target.value)}
                   placeholder="attribut"
-                  style={{ flex:1, fontFamily:"var(--font-mono)", fontSize:12 }}
+                  style={{ flex:1, fontFamily:"monospace", fontSize:13, padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1" }}
                 />
-                <span style={{ alignSelf:"center", color:"var(--color-text-tertiary)" }}>=</span>
+                <span style={{ alignSelf:"center", color:"#94a3b8", fontWeight: 600 }}>=</span>
                 <input
                   value={filterVal}
                   onChange={e => setFilterVal(e.target.value)}
                   placeholder="valeur"
-                  style={{ flex:1, fontSize:12 }}
+                  style={{ flex:1, fontSize:13, padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1" }}
                 />
               </div>
-              <div style={{ fontSize:11, color:"var(--color-text-tertiary)", marginTop:4 }}>
+              <div style={{ fontSize:11, color:"#94a3b8", marginTop:6 }}>
                 Booléens : true / false
               </div>
             </div>
 
             {/* source forcée */}
-            <div style={{ marginBottom:12 }}>
-              <label style={{ fontSize:11, fontWeight:500, color:"var(--color-text-secondary)", display:"block", marginBottom:5 }}>
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
                 Forcer une source
               </label>
-              <div style={{ display:"flex", gap:4 }}>
+              <div style={{ display:"flex", gap:6 }}>
                 {[null,"S1","S2","S3"].map(s => (
                   <button key={s||"auto"} onClick={() => setForceSrc(s)} style={{
-                    fontSize:11, padding:"4px 10px", borderRadius:5, cursor:"pointer",
+                    flex: 1, fontSize:12, padding:"6px 0", borderRadius:6, cursor:"pointer",
                     background: forceSrc===s
-                      ? (s ? SRC_COLOR[s]?.dot || "#534AB7" : "#534AB7")
-                      : "var(--color-background-secondary)",
-                    color: forceSrc===s ? "#fff" : "var(--color-text-secondary)",
-                    border: "0.5px solid var(--color-border-secondary)",
+                      ? (s ? SRC_COLOR[s]?.dot || "#2563eb" : "#2563eb")
+                      : "#f8fafc",
+                    color: forceSrc===s ? "#fff" : "#475569",
+                    border: forceSrc===s ? "1px solid transparent" : "1px solid #e2e8f0",
+                    fontWeight: 600, transition: "all 0.15s"
                   }}>
                     {s || "Auto"}
                   </button>
@@ -433,12 +442,13 @@ export default function LavPage() {
             </div>
 
             {/* require_all */}
-            <div style={{ marginBottom:14 }}>
-              <label style={{ fontSize:12, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:8 }}>
+            <div style={{ marginBottom:20 }}>
+              <label style={{ fontSize:13, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:10, color: "#475569" }}>
                 <input
                   type="checkbox"
                   checked={requireAll}
                   onChange={e => setRequireAll(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: "#2563eb" }}
                 />
                 Exclure tuples incomplets
               </label>
@@ -448,9 +458,10 @@ export default function LavPage() {
               onClick={runQuery}
               disabled={loading}
               style={{
-                width:"100%", background:"#534AB7", color:"#fff",
-                border:"none", padding:"8px 0", borderRadius:7,
-                fontSize:13, cursor:"pointer", opacity: loading ? 0.6 : 1,
+                width:"100%", background:"#2563eb", color:"#fff",
+                border:"none", padding:"12px 0", borderRadius:8,
+                fontSize:14, fontWeight: 600, cursor:"pointer", opacity: loading ? 0.7 : 1,
+                transition: "background 0.2s", boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
               }}
             >
               {loading ? "Réécriture en cours..." : "▶  Exécuter (LAV)"}
@@ -459,10 +470,9 @@ export default function LavPage() {
 
           {/* schema button */}
           <button onClick={() => { loadSchema(); setActiveTab("schema"); }} style={{
-            padding:"7px 0", borderRadius:7, cursor:"pointer", fontSize:12,
-            background:"var(--color-background-secondary)",
-            border:"0.5px solid var(--color-border-secondary)",
-            color:"var(--color-text-secondary)", width:"100%",
+            padding:"12px 0", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight: 600,
+            background:"white", border:"1px solid #cbd5e1", color:"#475569", width:"100%",
+            transition: "background 0.2s"
           }}>
             Voir le schéma LAV complet
           </button>
@@ -474,10 +484,9 @@ export default function LavPage() {
           {/* explication preset */}
           {presetIdx !== null && (
             <div style={{
-              padding:"10px 14px", borderRadius:7, marginBottom:12,
-              background:"#EEEDFE",
-              border:"0.5px solid #AFA9EC",
-              fontSize:12, color:"#3C3489", lineHeight:1.7,
+              padding:"14px 20px", borderRadius:12, marginBottom:16,
+              background:"#eff6ff", border:"1px solid #bfdbfe",
+              fontSize:14, color:"#1d4ed8", lineHeight:1.6,
             }}>
               <strong>Pourquoi cette requête est intéressante :</strong> {PRESET_QUERIES[presetIdx]?.explain}
             </div>
@@ -485,10 +494,9 @@ export default function LavPage() {
 
           {error && (
             <div style={{
-              padding:"10px 14px", borderRadius:7, marginBottom:12,
-              background:"var(--color-background-danger)",
-              border:"0.5px solid var(--color-border-danger)",
-              color:"var(--color-text-danger)", fontSize:13,
+              padding:"14px 20px", borderRadius:12, marginBottom:16,
+              background:"#fef2f2", border:"1px solid #fecaca",
+              color:"#b91c1c", fontSize:14, fontWeight: 500
             }}>
               {error}
             </div>
@@ -498,37 +506,36 @@ export default function LavPage() {
             <>
               {/* résumé */}
               <div style={{
-                display:"flex", gap:10, marginBottom:12, flexWrap:"wrap",
+                display:"flex", gap:12, marginBottom:16, flexWrap:"wrap",
               }}>
                 <div style={{
-                  background:"var(--color-background-secondary)",
-                  borderRadius:7, padding:"8px 14px", fontSize:12,
-                  color:"var(--color-text-secondary)",
+                  background:"white", border: "1px solid #e2e8f0",
+                  borderRadius:8, padding:"10px 16px", fontSize:13,
+                  color:"#475569", boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
                 }}>
-                  <span style={{ fontWeight:500, color:"var(--color-text-primary)" }}>
+                  <span style={{ fontWeight:700, color:"#0f172a", fontSize: 14 }}>
                     {result.total}
                   </span> résultat{result.total !== 1 ? "s" : ""}
                 </div>
                 <div style={{
-                  background:"var(--color-background-secondary)",
-                  borderRadius:7, padding:"8px 14px", fontSize:12,
-                  display:"flex", gap:6, alignItems:"center",
+                  background:"white", border: "1px solid #e2e8f0",
+                  borderRadius:8, padding:"10px 16px", fontSize:13,
+                  display:"flex", gap:8, alignItems:"center", boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
                 }}>
-                  <span style={{ color:"var(--color-text-secondary)" }}>Sources utilisées :</span>
+                  <span style={{ color:"#64748b", fontWeight: 500 }}>Sources utilisées :</span>
                   {result.sources_used.map(s => <SrcBadge key={s} src={s} />)}
                 </div>
                 {result.sources_skipped?.length > 0 && (
                   <div style={{
-                    background:"var(--color-background-secondary)",
-                    borderRadius:7, padding:"8px 14px", fontSize:12,
-                    display:"flex", gap:6, alignItems:"center",
+                    background:"white", border: "1px solid #e2e8f0",
+                    borderRadius:8, padding:"10px 16px", fontSize:13,
+                    display:"flex", gap:8, alignItems:"center", boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
                   }}>
-                    <span style={{ color:"var(--color-text-tertiary)" }}>Ignorées :</span>
+                    <span style={{ color:"#94a3b8", fontWeight: 500 }}>Ignorées :</span>
                     {result.sources_skipped.map(s => (
                       <span key={s} style={{
-                        fontSize:11, padding:"2px 7px", borderRadius:4,
-                        background:"#F1EFE8", color:"#5F5E5A",
-                        textDecoration:"line-through",
+                        fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight: 600,
+                        background:"#f1f5f9", color:"#94a3b8", textDecoration:"line-through",
                       }}>{s}</span>
                     ))}
                   </div>
@@ -536,17 +543,18 @@ export default function LavPage() {
               </div>
 
               {/* onglets */}
-              <div style={{ display:"flex", gap:4, marginBottom:12 }}>
+              <div style={{ display:"flex", gap:8, marginBottom:16 }}>
                 {[
                   { id:"result",   label:`Résultats (${result.total})` },
                   { id:"plan",     label:"Plan de réécriture" },
                   { id:"coverage", label:"Couverture des attributs" },
                 ].map(t => (
                   <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                    padding:"6px 14px", fontSize:12, borderRadius:6, cursor:"pointer",
-                    background: activeTab===t.id ? "#534AB7" : "var(--color-background-secondary)",
-                    color: activeTab===t.id ? "#fff" : "var(--color-text-secondary)",
-                    border: activeTab===t.id ? "none" : "0.5px solid var(--color-border-secondary)",
+                    padding:"8px 16px", fontSize:13, borderRadius:8, cursor:"pointer", fontWeight: 600,
+                    background: activeTab===t.id ? "#2563eb" : "white",
+                    color: activeTab===t.id ? "#fff" : "#64748b",
+                    border: activeTab===t.id ? "1px solid #2563eb" : "1px solid #e2e8f0",
+                    transition: "all 0.2s"
                   }}>
                     {t.label}
                   </button>
@@ -555,21 +563,18 @@ export default function LavPage() {
 
               {/* contenu onglet */}
               <div style={{
-                background:"var(--color-background-primary)",
-                border:"0.5px solid var(--color-border-tertiary)",
-                borderRadius:8, overflow:"hidden",
+                background:"white", border:"1px solid #e2e8f0",
+                borderRadius:12, overflow:"hidden", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
               }}>
                 {activeTab === "result" && (
                   <ResultTable columns={columns} rows={result.data} />
                 )}
 
                 {activeTab === "plan" && (
-                  <div style={{ padding:"14px 16px" }}>
+                  <div style={{ padding:"20px" }}>
                     <div style={{
-                      fontSize:11, fontWeight:500,
-                      color:"var(--color-text-tertiary)",
-                      textTransform:"uppercase", letterSpacing:"0.06em",
-                      marginBottom:10,
+                      fontSize:12, fontWeight:600, color:"#64748b",
+                      textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:16,
                     }}>
                       Plan de réécriture LAV
                     </div>
@@ -580,7 +585,7 @@ export default function LavPage() {
                 )}
 
                 {activeTab === "coverage" && (
-                  <div style={{ padding:"14px 16px" }}>
+                  <div style={{ padding:"20px" }}>
                     <CoverageMap map={result.coverage_map} />
                   </div>
                 )}
@@ -591,52 +596,48 @@ export default function LavPage() {
           {/* schéma LAV complet */}
           {activeTab === "schema" && (
             <div style={{
-              background:"var(--color-background-primary)",
-              border:"0.5px solid var(--color-border-tertiary)",
-              borderRadius:8, padding:"16px",
+              background:"white", border:"1px solid #e2e8f0",
+              borderRadius:12, padding:"24px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
             }}>
               <div style={{
-                fontSize:12, fontWeight:500, marginBottom:14,
-                color:"var(--color-text-primary)",
+                fontSize:15, fontWeight:600, marginBottom:20, color:"#0f172a",
               }}>
                 Schéma LAV — mappings sources → entités globales
               </div>
               {schemaLoading && (
-                <div style={{ color:"var(--color-text-tertiary)", fontSize:13 }}>Chargement...</div>
+                <div style={{ color:"#64748b", fontSize:14, fontWeight: 500 }}>Chargement du schéma...</div>
               )}
               {schema && Object.entries(schema).map(([entity, info]) => (
-                <div key={entity} style={{ marginBottom:16 }}>
+                <div key={entity} style={{ marginBottom:24 }}>
                   <div style={{
-                    fontWeight:500, fontSize:13, marginBottom:6,
-                    color:"var(--color-text-primary)",
-                    fontFamily:"var(--font-mono)",
+                    fontWeight:600, fontSize:14, marginBottom:10,
+                    color:"#0f172a", fontFamily:"monospace",
                   }}>
                     {entity}
                   </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:12 }}>
                     {info.sources.map(s => (
                       <div key={s.source} style={{
-                        border:`0.5px solid ${SRC_COLOR[s.source]?.dot || "#ccc"}44`,
-                        borderRadius:7, padding:"10px 12px",
-                        background:(SRC_COLOR[s.source]?.bg || "#f5f5f5")+"55",
+                        border:`1px solid ${SRC_COLOR[s.source]?.dot || "#cbd5e1"}44`,
+                        borderRadius:10, padding:"12px 16px",
+                        background:(SRC_COLOR[s.source]?.bg || "#f8fafc"),
                       }}>
                         <div style={{
-                          display:"flex", alignItems:"center",
-                          gap:6, marginBottom:6,
+                          display:"flex", alignItems:"center", gap:8, marginBottom:8,
                         }}>
                           <SrcBadge src={s.source} />
                           <span style={{
-                            fontSize:10,
-                            color:(SRC_COLOR[s.source]?.text || "#444"),
+                            fontSize:11, fontWeight: 600,
+                            color:(SRC_COLOR[s.source]?.dot || "#475569"),
                           }}>
                             {s.completeness}
                           </span>
                         </div>
-                        <div style={{ fontSize:11, color:"var(--color-text-secondary)", lineHeight:1.5 }}>
+                        <div style={{ fontSize:12, color:"#475569", lineHeight:1.6 }}>
                           {s.description}
                         </div>
                         {s.attributes_missing?.length > 0 && (
-                          <div style={{ marginTop:6, fontSize:10, color:"var(--color-text-tertiary)" }}>
+                          <div style={{ marginTop:8, fontSize:11, color:"#94a3b8", fontWeight: 500 }}>
                             Manquants : {s.attributes_missing.join(", ")}
                           </div>
                         )}
@@ -650,10 +651,9 @@ export default function LavPage() {
 
           {!result && activeTab !== "schema" && (
             <div style={{
-              border:"0.5px dashed var(--color-border-tertiary)",
-              borderRadius:8, padding:"40px 24px",
-              textAlign:"center", color:"var(--color-text-tertiary)",
-              fontSize:13,
+              border:"1px dashed #cbd5e1", background: "#f8fafc",
+              borderRadius:12, padding:"60px 32px",
+              textAlign:"center", color:"#64748b", fontSize:14, fontWeight: 500
             }}>
               Sélectionnez une requête prédéfinie ou configurez votre requête,
               puis cliquez sur Exécuter.
@@ -661,6 +661,6 @@ export default function LavPage() {
           )}
         </div>
       </div>
-    </div>
+    </Box>
   );
 }

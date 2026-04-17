@@ -121,6 +121,15 @@ class WrapperS2:
         docs = await db.ouvrages.aggregate(pipeline).to_list(None)
         return [{**d, "theme_id": None, "_source": "S2"} for d in docs]
 
+    async def get_appartient_theme(self) -> list[dict]:
+        db = get_s2_db()
+        pipeline = [
+            {"$match": {"sujet": {"$ne": None, "$ne": ""}}},
+            {"$project": {"livre_ref": "$isbn_ref", "nom_theme": {"$toLower": {"$trim": {"input": "$sujet"}}}, "_id": 0}}
+        ]
+        docs = await db.ouvrages.aggregate(pipeline).to_list(None)
+        return [{"livre_ref": d["livre_ref"], "theme_ref": d["nom_theme"], "nom_theme": d["nom_theme"], "_source": "S2"} for d in docs]
+
     async def update_theme_in_ouvrages(self, old_theme: str, new_theme: str) -> dict:
         """Renomme le sujet dans tous les ouvrages qui l'utilisent."""
         db = get_s2_db()
@@ -129,6 +138,11 @@ class WrapperS2:
             {"$set": {"sujet": new_theme}}
         )
         return {"modified": result.modified_count, "_source": "S2"}
+
+    async def get_personnes(self) -> list[dict]:
+        adherents = await self.get_adherents()
+        enseignants = await self.get_enseignants()
+        return adherents + enseignants
 
     # ════════════════════════════════════════════════════════
     #  LIVRE  (collection ouvrages)
@@ -392,6 +406,11 @@ class WrapperS2:
     #  SUGGESTION  (suggestions[] imbriqué dans adherant Professeur)
     # EMPRUNT absent de S2
     # ════════════════════════════════════════════════════════
+
+    async def get_emprunts(self) -> list[dict]:
+        """S2 ne stocke pas les emprunts — retourne une liste vide."""
+        return []
+
     async def get_suggestions(self) -> list[dict]:
         db = get_s2_db()
         pipeline = [

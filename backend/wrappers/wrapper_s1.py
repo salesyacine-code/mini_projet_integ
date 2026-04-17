@@ -84,6 +84,12 @@ class WrapperS1:
         )
         return [{**r, "theme_id": None, "_source": "S1"} for r in rows]
 
+    async def get_appartient_theme(self) -> list[dict]:
+        rows = await self._fetch_all(
+            "SELECT CAST(livre_id AS CHAR) AS livre_ref, LOWER(TRIM(categorie)) AS nom_theme FROM LIVRE WHERE categorie IS NOT NULL AND TRIM(categorie) != ''"
+        )
+        return [{"livre_ref": r["livre_ref"], "theme_ref": r["nom_theme"], "nom_theme": r["nom_theme"], "_source": "S1"} for r in rows]
+
     async def create_theme(self, data: dict) -> dict:
         # S1 n'a pas de table THEME autonome → on l'applique comme categorie
         # Ici on retourne simplement la donnée, la vraie création se fait via LIVRE
@@ -172,6 +178,11 @@ class WrapperS1:
     async def delete_exemplaire(self, exemplaire_id: int) -> bool:
         n = await self._execute("DELETE FROM EXEMPLAIRE WHERE exemplaire_id=%s", (exemplaire_id,))
         return n > 0
+
+    async def get_personnes(self) -> list[dict]:
+        adherents = await self.get_adherents()
+        enseignants = await self.get_enseignants()
+        return adherents + enseignants
 
     # ════════════════════════════════════════════════════════
     #  ADHERENT

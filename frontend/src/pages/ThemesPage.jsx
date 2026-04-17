@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../Api";
 import DataTable from "../Layout/DataTable";
+import PageHeader from "../Layout/PageHeader";
 
 // MUI
 import {
@@ -50,34 +51,31 @@ export default function ThemesPage() {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <Box p={3}>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
       
-      {/* Title */}
-      <Typography variant="h5" gutterBottom>
-        Thèmes
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Entité THEME extraite par normalisation — S1 · S2 · S3.
-        <br />
-        Relation N-M via APPARTIENT_THEME (livre ↔ thème).
-      </Typography>
+      <PageHeader 
+        title="Thèmes" 
+        subtitle={<>Entité THEME extraite par normalisation — S1 · S2 · S3.<br />Relation N-M via APPARTIENT_THEME (livre ↔ thème).</>} 
+      />
 
       {/* Tabs */}
       <Tabs
         value={tab}
         onChange={(e, newValue) => setTab(newValue)}
-        sx={{ mb: 3 }}
+        sx={{ mb: 4, borderBottom: 1, borderColor: "divider" }}
       >
-        <Tab label="THEME" value="themes" />
-        <Tab label="APPARTIENT_THEME (N-M)" value="appt" />
+        <Tab label="THEME" value="themes" sx={{ fontWeight: 600 }} />
+        <Tab label="APPARTIENT_THEME (N-M)" value="appt" sx={{ fontWeight: 600 }} />
       </Tabs>
 
       {/* Table */}
       <DataTable
         columns={tab === "themes" ? COLS_THEMES : COLS_APPT}
-        data={rows}
-        onSourceFilterChange={setSource}
+        rows={rows}
+        loading={loading}
+        error={error}
+        sourceFilter={source}
+        onSourceFilter={setSource}
       />
 
     </Box>

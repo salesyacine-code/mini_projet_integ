@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../Api";
 import DataTable from "../Layout/DataTable";
+import PageHeader from "../Layout/PageHeader";
 
 // MUI
 import {
   Box,
-  Typography,
   Button,
   Chip,
   Stack,
-  Paper
 } from "@mui/material";
 
 const COLS = [
@@ -49,20 +48,14 @@ export default function PersonnesAllPage() {
   }, {});
 
   return (
-    <Box p={3}>
-      {/* Title */}
-      <Typography variant="h5" gutterBottom>
-        Personnes
-      </Typography>
-
-      <Typography variant="body2" color="text.secondary" mb={2}>
-        Super-entité ISA <strong>PERSONNE</strong> — fusion de toutes les personnes des 3 sources.
-        <br />
-        S1 (ADHERENT + ENSEIGNANT) · S2 (collection adherant, champ type) · S3 (Member + Professor)
-      </Typography>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
+      <PageHeader 
+        title="Personnes" 
+        subtitle={<>Super-entité ISA <strong>PERSONNE</strong> — fusion de toutes les personnes des 3 sources.<br />S1 (ADHERENT + ENSEIGNANT) · S2 (collection adherant, champ type) · S3 (Member + Professor)</>} 
+      />
 
       {/* Filters */}
-      <Stack direction="row" spacing={1} mb={3}>
+      <Stack direction="row" spacing={1.5} mb={3}>
         {[
           { label:"Tous", value:null, count:rows.length },
           { label:"Adhérents", value:"Adherent", count:countByType["Adherent"] || 0 },
@@ -72,29 +65,33 @@ export default function PersonnesAllPage() {
             key={t.label}
             variant={typeFilter === t.value ? "contained" : "outlined"}
             onClick={() => setTypeFilter(t.value)}
-            sx={{ borderRadius: 2 }}
+            disableElevation
+            sx={{ borderRadius: 4, px: 2 }}
           >
             {t.label}
             <Chip
               label={t.count}
               size="small"
-              sx={{ ml: 1 }}
+              sx={{ 
+                ml: 1, 
+                height: 20, 
+                bgcolor: typeFilter === t.value ? "primary.dark" : "action.selected",
+                color: typeFilter === t.value ? "white" : "text.primary" 
+              }}
             />
           </Button>
         ))}
       </Stack>
 
       {/* Table container */}
-      <Paper elevation={2} sx={{ p: 2 }}>
-        <DataTable
-          columns={COLS}
-          rows={rows}
-          loading={loading}
-          error={error}
-          sourceFilter={source}
-          onSourceFilter={setSource}
-        />
-      </Paper>
+      <DataTable
+        columns={COLS}
+        rows={rows}
+        loading={loading}
+        error={error}
+        sourceFilter={source}
+        onSourceFilter={setSource}
+      />
     </Box>
   );
 }

@@ -116,6 +116,18 @@ class WrapperS3:
         return {"theme_id": rows[0]["t"].get("theme_id"),
                 "nom_theme": rows[0]["t"].get("name"), "_source": "S3"}
 
+    async def get_appartient_theme(self) -> list[dict]:
+        rows = await run_s3_query("""
+            MATCH (b:Book)-[:BELONGS_TO]->(t:Theme)
+            RETURN b.isbn AS livre_ref, t.name AS nom_theme
+        """)
+        return [{
+            "livre_ref": r.get("livre_ref"),
+            "theme_ref": r.get("nom_theme"),
+            "nom_theme": r.get("nom_theme"),
+            "_source": "S3"
+        } for r in rows]
+
     async def create_theme(self, data: dict) -> dict:
         theme_id = f"TH-{data['nom_theme'].upper().replace(' ', '_')[:8]}"
         await run_s3_write(
@@ -320,6 +332,11 @@ class WrapperS3:
             "MATCH (c:Copy {copy_id: $cid}) DETACH DELETE c", {"cid": copy_id}
         )
         return counters.get("nodes_deleted", 0) > 0
+
+    async def get_personnes(self) -> list[dict]:
+        adherents = await self.get_adherents()
+        enseignants = await self.get_enseignants()
+        return adherents + enseignants
 
     # ════════════════════════════════════════════════════════
     #  ADHERENT  (nœuds Member)

@@ -1,22 +1,37 @@
 import { useState, useEffect } from "react";
 import { api } from "../Api";
 import {
-  Box, Typography, Grid, Paper, Chip, CircularProgress, Divider
+  Box, Typography, Grid, Paper, Chip, CircularProgress, Divider, Stack
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import PageHeader from "../Layout/PageHeader";
 
 function StatCard({ label, value, sub }) {
   return (
-    <Paper elevation={0} className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-      <Typography variant="caption" className="text-gray-500 uppercase tracking-wide block mb-1">
+    <Paper elevation={0} sx={{ 
+      p: 2.5, 
+      borderRadius: 3, 
+      border: "1px solid",
+      borderColor: "divider",
+      bgcolor: "background.paper",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      transition: "box-shadow 0.2s",
+      "&:hover": {
+        boxShadow: "0 4px 20px 0 rgba(0,0,0,0.05)"
+      }
+    }}>
+      <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 0.5, lineHeight: 1.2 }}>
         {label}
       </Typography>
-      <Typography variant="h5" className="font-medium text-gray-900 dark:text-white">
+      <Typography variant="h4" color="text.primary" fontWeight={600}>
         {value ?? "—"}
       </Typography>
       {sub && (
-        <Typography variant="caption" className="text-gray-400 mt-1 block">
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
           {sub}
         </Typography>
       )}
@@ -27,19 +42,17 @@ function StatCard({ label, value, sub }) {
 function HealthBadge({ label, status }) {
   const ok = status === "OK";
   return (
-    <Box className="flex items-center gap-2">
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1.5, borderRadius: 2, bgcolor: ok ? "success.50" : "error.50", border: "1px solid", borderColor: ok ? "success.200" : "error.200" }}>
       {ok
-        ? <CheckCircleIcon fontSize="small" className="text-green-600" />
-        : <ErrorIcon fontSize="small" className="text-red-500" />
+        ? <CheckCircleIcon fontSize="small" color="success" />
+        : <ErrorIcon fontSize="small" color="error" />
       }
-      <Typography variant="body2" className="text-gray-600 dark:text-gray-300">{label}</Typography>
+      <Typography variant="body2" fontWeight={500} color={ok ? "success.900" : "error.900"}>{label}</Typography>
       <Chip
         label={ok ? "Connecté" : "Erreur"}
         size="small"
-        className={ok
-          ? "bg-green-100 text-green-800 font-medium"
-          : "bg-red-100 text-red-700 font-medium"
-        }
+        color={ok ? "success" : "error"}
+        sx={{ fontWeight: 600, height: 24 }}
       />
     </Box>
   );
@@ -58,39 +71,44 @@ export default function Dashboard() {
   }, []);
 
   if (loading) return (
-    <Box className="flex items-center gap-3 p-8 text-gray-400">
-      <CircularProgress size={20} />
-      <Typography variant="body2">Chargement...</Typography>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 2, p: 4, color: "text.secondary" }}>
+      <CircularProgress size={24} color="inherit" />
+      <Typography variant="body1">Chargement des données...</Typography>
     </Box>
   );
 
   return (
-    <Box className="px-7 py-6">
-      <Typography variant="h5" className="font-medium mb-1">Vue d'ensemble</Typography>
-      <Typography variant="body2" className="text-gray-500 mb-6">
-        Médiateur de données — schéma global intégré (3 sources)
-      </Typography>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
+      <PageHeader 
+        title="Vue d'ensemble" 
+        subtitle="Médiateur de données — schéma global intégré (3 sources)" 
+      />
 
       {/* Health */}
       {health && (
-        <Paper elevation={0} className="flex flex-wrap gap-6 px-5 py-4 mb-6 rounded-xl border border-gray-200 dark:border-gray-700">
-          {[
-            ["S1 MySQL",   health.s1_mysql],
-            ["S2 MongoDB", health.s2_mongodb],
-            ["S3 Neo4j",   health.s3_neo4j],
-          ].map(([label, status]) => (
-            <HealthBadge key={label} label={label} status={status} />
-          ))}
-        </Paper>
+        <Box sx={{ mb: 5 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, textTransform: "uppercase", letterSpacing: 1 }}>
+            État de l'intégration
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            {[
+              ["S1 MySQL",   health.s1_mysql],
+              ["S2 MongoDB", health.s2_mongodb],
+              ["S3 Neo4j",   health.s3_neo4j],
+            ].map(([label, status]) => (
+              <HealthBadge key={label} label={label} status={status} />
+            ))}
+          </Stack>
+        </Box>
       )}
 
       {/* Stats */}
       {stats && (
-        <>
-          <Typography variant="overline" className="text-gray-400 tracking-widest mb-3 block">
-            Entités globales
+        <Box>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, mt: 4, textTransform: "uppercase", letterSpacing: 1 }}>
+            Entités globales dédupliquées
           </Typography>
-          <Grid container spacing={1.5} className="mb-6">
+          <Grid container spacing={2} sx={{ mb: 6 }}>
             {[
               ["Auteurs",     stats.auteurs],
               ["Thèmes",      stats.themes],
@@ -102,32 +120,30 @@ export default function Dashboard() {
               ["Emprunts",    stats.emprunts],
               ["Suggestions", stats.suggestions],
             ].map(([label, s]) => (
-              <Grid item xs={6} sm={4} md={3} lg={2} key={label}>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={label}>
                 <StatCard
                   label={label}
                   value={s?.total ?? 0}
                   sub={s?.par_source
-                    ? Object.entries(s.par_source).map(([k, v]) => `${k}:${v}`).join("  ")
+                    ? Object.entries(s.par_source).map(([k, v]) => `${k}:${v}`).join(" • ")
                     : null}
                 />
               </Grid>
             ))}
           </Grid>
 
-          <Divider className="mb-4" />
-
-          <Typography variant="overline" className="text-gray-400 tracking-widest mb-3 block">
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2, textTransform: "uppercase", letterSpacing: 1 }}>
             Indicateurs clés
           </Typography>
-          <Grid container spacing={1.5}>
-            <Grid item xs={12} sm={6} md={4}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
               <StatCard label="Exemplaires disponibles" value={stats.exemplaires_dispo?.total ?? 0} />
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6}>
               <StatCard label="Emprunts en cours" value={stats.emprunts_en_cours?.total ?? 0} />
             </Grid>
           </Grid>
-        </>
+        </Box>
       )}
     </Box>
   );

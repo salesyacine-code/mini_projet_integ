@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "../Api";
 import DataTable from "../Layout/DataTable";
+import PageHeader from "../Layout/PageHeader";
 import {
   Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, CircularProgress, IconButton, Stack, InputAdornment
+  TextField, Button, CircularProgress, IconButton, Stack, InputAdornment,
+  Select, MenuItem, InputLabel, FormControl
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
@@ -19,7 +21,7 @@ const COLS = [
   { key: "source",            label: "Source",   width: 70 },
 ];
 
-const EMPTY = { titre: "", isbn: "", annee_publication: "", auteur_id: "", categorie: "" };
+const EMPTY = { titre: "", isbn: "", annee_publication: "", nb_pages: "", editeur: "", auteur_id: "", theme: "" };
 
 export default function LivresPage() {
   const [rows, setRows]             = useState([]);
@@ -32,6 +34,7 @@ export default function LivresPage() {
   const [form, setForm]             = useState(EMPTY);
   const [editId, setEditId]         = useState(null);
   const [saving, setSaving]         = useState(false);
+  const [destSource, setDestSource] = useState("S1");
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
@@ -53,23 +56,25 @@ export default function LivresPage() {
     setForm({
       titre: row.titre || "", isbn: row.isbn || "",
       annee_publication: row.annee_publication || "",
-      auteur_id: row.auteur_id || "", categorie: (row.themes || [])[0] || "",
+      nb_pages: row.nb_pages || "", editeur: row.editeur || "",
+      auteur_id: row.auteur_id || "", theme: (row.themes || [])[0] || "",
     });
+    setDestSource(row._source || "S1");
     setEditId(row.livre_id);
     setOpen(true);
   };
 
   const handleDelete = async (row) => {
     if (!window.confirm(`Supprimer "${row.titre}" ?`)) return;
-    try { await api.deleteLivre(row.livre_id); load(); }
+    try { await api.deleteLivre(row.livre_id, row._source); load(); }
     catch (e) { alert(e.message); }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      if (editId) await api.updateLivre(editId, form);
-      else        await api.createLivre(form);
+      if (editId) await api.updateLivre(editId, form, destSource);
+      else        await api.createLivre(form, destSource);
       setOpen(false); load();
     } catch (e) { alert(e.message); }
     finally { setSaving(false); }
@@ -86,11 +91,11 @@ export default function LivresPage() {
   );
 
   return (
-    <Box className="px-7 py-6 relative">
-      <Typography variant="h5" className="font-medium mb-1">Livres</Typography>
-      <Typography variant="body2" className="text-gray-500 mb-4">
-        Vue globale LIVRE — S1 (LIVRE) · S2 (ouvrages) · S3 (Book). Dédupliqués par ISBN.
-      </Typography>
+    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
+      <PageHeader 
+        title="Livres" 
+        subtitle="Vue globale LIVRE — S1 (LIVRE) · S2 (ouvrages) · S3 (Book). Dédupliqués par ISBN." 
+      />
 
       {/* Filtres */}
       <Box className="flex flex-wrap gap-2 mb-4">
@@ -122,8 +127,8 @@ export default function LivresPage() {
 
       <DataTable
         columns={COLS} rows={rows} loading={loading} error={error}
-        onEdit={r   => r.source === "S1" ? openEdit(r)    : alert("Édition uniquement sur S1")}
-        onDelete={r => r.source === "S1" ? handleDelete(r) : alert("Suppression uniquement sur S1")}
+        onEdit={openEdit}
+        onDelete={handleDelete}
         onAdd={openAdd} addLabel="Nouveau livre"
         sourceFilter={source} onSourceFilter={setSource}
       />
@@ -140,11 +145,26 @@ export default function LivresPage() {
 
         <DialogContent dividers>
           <Stack spacing={2} className="pt-1">
+            <FormControl fullWidth size="small">
+              <InputLabel>Source de destination</InputLabel>
+              <Select
+                value={destSource}
+                label="Source de destination"
+                onChange={(e) => setDestSource(e.target.value)}
+                disabled={!!editId}
+              >
+                <MenuItem value="S1">S1 (MySQL)</MenuItem>
+                <MenuItem value="S2">S2 (MongoDB)</MenuItem>
+                <MenuItem value="S3">S3 (Neo4j)</MenuItem>
+              </Select>
+            </FormControl>
             {field("titre",             "Titre *")}
             {field("isbn",              "ISBN")}
             {field("annee_publication", "Année de publication", "number")}
-            {field("auteur_id",         "ID Auteur (S1)")}
-            {field("categorie",         "Catégorie / Thème")}
+            {field("nb_pages",          "Nombre de pages", "number")}
+            {field("editeur",           "Éditeur")}
+            {field("auteur_id",         "ID Auteur")}
+            {field("theme",             "Thème")}
           </Stack>
         </DialogContent>
 

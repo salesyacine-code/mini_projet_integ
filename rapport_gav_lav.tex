@@ -1,0 +1,462 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,fit}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.97}
+
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{blue},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily\footnotesize,
+  breaklines=true,
+  numbers=left,
+  frame=single,
+  rulecolor=\color{codegray},
+}
+\lstset{style=mystyle}
+
+\title{
+  \textbf{Rapport Technique}\\[0.5cm]
+  \Large Intégration de Données Hétérogènes\\
+  Approches GAV et LAV avec Algorithme Bucket\\[0.3cm]
+  \large Mini-Projet d'Intégration de Données
+}
+\author{Projet Bibliothèque — 3 Sources Hétérogènes}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ================================================================
+\section{Introduction}
+% ================================================================
+
+Ce rapport présente l'implémentation d'un système d'intégration de données hétérogènes pour une bibliothèque universitaire. Le système intègre trois sources de données de nature différente :
+
+\begin{itemize}
+  \item \textbf{S1 — MySQL} : base de données relationnelle (tables AUTEUR, LIVRE, EXEMPLAIRE, ADHERENT, ENSEIGNANT, EMPRUNT, SUGGESTION)
+  \item \textbf{S2 — MongoDB} : base de données documentaire (collections \texttt{ouvrages}, \texttt{adherant})
+  \item \textbf{S3 — Neo4j} : base de données orientée graphe (nœuds Writer, Book, Theme, Member, Professor ; relations WROTE, BELONGS\_TO, BORROWED, SUGGESTED)
+\end{itemize}
+
+L'objectif est de fournir une \textbf{vue unifiée} de ces trois sources via un schéma global, en implémentant les deux approches classiques d'intégration : \textbf{GAV} (Global As View) et \textbf{LAV} (Local As View).
+
+% ================================================================
+\section{Architecture Générale}
+% ================================================================
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=2.8cm, minimum height=1cm, align=center, font=\small},
+  source/.style={box, fill=orange!20},
+  wrapper/.style={box, fill=green!15},
+  mediator/.style={box, fill=blue!15, minimum width=4cm},
+  schema/.style={box, fill=purple!15, minimum width=5cm},
+  arrow/.style={->, thick, >=stealth}
+]
+  % Sources
+  \node[source] (s1) at (0,0) {S1\\MySQL};
+  \node[source] (s2) at (4,0) {S2\\MongoDB};
+  \node[source] (s3) at (8,0) {S3\\Neo4j};
+
+  % Wrappers
+  \node[wrapper] (w1) at (0,2) {Wrapper S1};
+  \node[wrapper] (w2) at (4,2) {Wrapper S2};
+  \node[wrapper] (w3) at (8,2) {Wrapper S3};
+
+  % Mediator
+  \node[mediator] (med) at (4,4.5) {Médiateur\\(GAV + LAV)};
+
+  % Schema
+  \node[schema] (sg) at (4,6.5) {Schéma Global\\10 Entités};
+
+  % Frontend
+  \node[box, fill=red!10, minimum width=4cm] (fe) at (4,8.5) {Frontend React\\(Interface Utilisateur)};
+
+  % Arrows
+  \draw[arrow] (s1) -- (w1);
+  \draw[arrow] (s2) -- (w2);
+  \draw[arrow] (s3) -- (w3);
+  \draw[arrow] (w1) -- (med);
+  \draw[arrow] (w2) -- (med);
+  \draw[arrow] (w3) -- (med);
+  \draw[arrow] (med) -- (sg);
+  \draw[arrow] (sg) -- (fe);
+\end{tikzpicture}
+\caption{Architecture en couches du système d'intégration}
+\end{figure}
+
+% ================================================================
+\section{Le Schéma Global}
+% ================================================================
+
+Le schéma global unifié comprend \textbf{10 entités} qui représentent l'union sémantique de toutes les informations disponibles dans les 3 sources :
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Entité Globale} & \textbf{Attributs Principaux} & \textbf{Sources} \\
+\midrule
+AUTEUR & auteur\_id, nom, prenom, nationalite & S1, S2, S3 \\
+THEME & theme\_id, nom\_theme & S1, S2, S3 \\
+APPARTIENT\_THEME & livre\_ref, theme\_ref & S1, S2, S3 \\
+LIVRE & isbn, titre, annee, editeur, nb\_pages & S1, S2, S3 \\
+EXEMPLAIRE & exemplaire\_id, code\_barre, etat & S1, S2, S3 \\
+PERSONNE & personne\_id, nom, prenom, type & S1, S2, S3 \\
+ADHERENT & personne\_id, email, telephone, cursus & S1, S2, S3 \\
+ENSEIGNANT & personne\_id, departement, email & S1, S2, S3 \\
+EMPRUNT & emprunt\_id, date\_emprunt, statut & S1, S3 \\
+SUGGESTION & suggestion\_id, raison, date & S1, S2, S3 \\
+\bottomrule
+\end{tabular}
+\caption{Entités du schéma global}
+\end{table}
+
+% ================================================================
+\section{Processus d'Intégration de Schémas}
+% ================================================================
+
+L'intégration suit les 4 étapes classiques du processus d'intégration de schémas :
+
+\subsection{Étape 1 — Pré-intégration}
+Chaque source a été analysée indépendamment. Les \textbf{Wrappers} (\texttt{WrapperS1}, \texttt{WrapperS2}, \texttt{WrapperS3}) encapsulent l'accès natif à chaque source et exposent une interface asynchrone uniforme.
+
+\begin{lstlisting}[language=Python, caption=Interface uniforme d'un Wrapper]
+class WrapperS1:
+    async def get_auteurs(self) -> list[dict]: ...
+    async def get_livres(self) -> list[dict]: ...
+    async def create_auteur(self, data: dict): ...
+\end{lstlisting}
+
+\subsection{Étape 2 — Comparaison des schémas}
+Les correspondances sémantiques ont été identifiées entre les 3 sources. Par exemple :
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llll}
+\toprule
+\textbf{Schéma Global} & \textbf{S1 (MySQL)} & \textbf{S2 (MongoDB)} & \textbf{S3 (Neo4j)} \\
+\midrule
+AUTEUR.nom & AUTEUR.nom & contributeurs[].nom & Writer.name \\
+LIVRE.isbn & LIVRE.isbn & ouvrages.isbn & Book.isbn \\
+LIVRE.nb\_pages & \textit{absent} & ouvrages.nb\_pages & Book.pages \\
+ADHERENT.cursus & \textit{absent} & adherant.cursus & \textit{absent} \\
+\bottomrule
+\end{tabular}
+\caption{Correspondances sémantiques entre les sources}
+\end{table}
+
+\subsection{Étape 3 — Mise en conformité}
+Chaque wrapper transforme les données locales vers le schéma global :
+
+\begin{lstlisting}[language=Python, caption=Mise en conformité dans WrapperS2 (MongoDB)]
+# MongoDB: contributeurs[role="auteur"] -> AUTEUR global
+for contrib in doc.get("contributeurs", []):
+    if contrib.get("role") == "auteur":
+        result.append({
+            "auteur_id": f"S2-{doc['_id']}-{i}",
+            "nom":       contrib.get("nom", ""),
+            "prenom":    contrib.get("prenom", ""),
+            "_source":   "S2",
+        })
+\end{lstlisting}
+
+\subsection{Étape 4 — Fusion et Restructuration}
+Le \textbf{Médiateur} fusionne les résultats des 3 wrappers et applique une déduplication par clé naturelle :
+
+\begin{lstlisting}[language=Python, caption=Fusion dans le Médiateur]
+DEDUP_KEY = {
+    "AUTEUR": "nom",  "LIVRE": "isbn",
+    "EXEMPLAIRE": "code_barre",
+    "ADHERENT": "email", "ENSEIGNANT": "email",
+}
+
+async def get_auteurs(self):
+    tasks = [self.s1.get_auteurs(),
+             self.s2.get_auteurs(),
+             self.s3.get_auteurs()]
+    results = await asyncio.gather(*tasks,
+                    return_exceptions=True)
+    return self._merge("AUTEUR", results)
+\end{lstlisting}
+
+% ================================================================
+\section{Approche GAV — Global As View}
+% ================================================================
+
+\subsection{Principe}
+Dans l'approche \textbf{GAV} (Global As View), chaque entité du schéma global est définie comme une \textbf{vue} sur les sources locales. Le médiateur connaît exactement comment décomposer une requête globale en requêtes locales.
+
+\[
+\text{Vue\_AUTEUR} = \text{S1.AUTEUR} \cup \text{S2.contributeurs[auteur]} \cup \text{S3.Writer}
+\]
+
+\subsection{Implémentation}
+Le fichier \texttt{services/mediator.py} implémente le GAV. Pour chaque entité globale, le médiateur :
+
+\begin{enumerate}
+  \item Envoie la requête en \textbf{parallèle} aux 3 wrappers via \texttt{asyncio.gather}
+  \item Fusionne les résultats en appliquant la \textbf{déduplication} par clé naturelle
+  \item Retourne les données annotées avec le champ \texttt{\_source}
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption=GAV — Lecture parallèle et fusion]
+class Mediator:
+    async def get_livres(self) -> list[dict]:
+        tasks = [
+            self.s1.get_livres(),
+            self.s2.get_livres(),
+            self.s3.get_livres()
+        ]
+        results = await asyncio.gather(
+            *tasks, return_exceptions=True
+        )
+        return self._merge("LIVRE", results)
+\end{lstlisting}
+
+\subsection{Table des sources par entité (GAV)}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lccc}
+\toprule
+\textbf{Entité} & \textbf{S1} & \textbf{S2} & \textbf{S3} \\
+\midrule
+AUTEUR & \checkmark & \checkmark & \checkmark \\
+THEME & \checkmark & \checkmark & \checkmark \\
+LIVRE & \checkmark & \checkmark & \checkmark \\
+EXEMPLAIRE & \checkmark & \checkmark & \checkmark \\
+ADHERENT & \checkmark & \checkmark & \checkmark \\
+ENSEIGNANT & \checkmark & \checkmark & \checkmark \\
+EMPRUNT & \checkmark & $\times$ & \checkmark \\
+SUGGESTION & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\caption{Participation des sources par entité (GAV)}
+\end{table}
+
+% ================================================================
+\section{Approche LAV — Local As View}
+% ================================================================
+
+\subsection{Principe}
+Dans l'approche \textbf{LAV} (Local As View), chaque \textbf{source locale} est définie comme une vue sur le schéma global. Le moteur de réécriture doit alors déterminer quelles sources interroger pour répondre à une requête globale.
+
+\[
+\text{S2.ouvrages} \subseteq \Pi_{\text{isbn, titre, nb\_pages, editeur}}(\text{LIVRE})
+\]
+
+\subsection{Définitions LAV}
+Le fichier \texttt{services/lav\_definitions.py} contient le registre des vues LAV. Chaque vue est décrite par :
+
+\begin{lstlisting}[language=Python, caption=Structure d'une vue LAV]
+@dataclass
+class LAVSourceView:
+    source_name: str        # "S1", "S2", "S3"
+    entity:      str        # "LIVRE", "AUTEUR"...
+    description: str
+    completeness: float     # 0.0 a 1.0
+    conditions:  list[str]  # contraintes
+    attributes:  list[LAVAttributeMapping]
+    fetch_fn:    Callable   # fonction async
+\end{lstlisting}
+
+Exemple de définition pour S2 :
+\begin{lstlisting}[language=Python, caption=Vue LAV de S2 pour LIVRE]
+LAVSourceView(
+    source_name="S2",
+    entity="LIVRE",
+    description="ouvrages MongoDB",
+    completeness=0.9,
+    conditions=[],
+    attributes=[
+        LAVAttributeMapping("isbn",   "isbn",   True),
+        LAVAttributeMapping("titre",  "titre",  True),
+        LAVAttributeMapping("nb_pages","nb_pages",True),
+        LAVAttributeMapping("editeur","editeur", True),
+        LAVAttributeMapping("auteur_id","",     False),
+    ],
+    fetch_fn=s2_wrapper.get_livres,
+)
+\end{lstlisting}
+
+\subsection{Algorithme Bucket}
+
+L'algorithme Bucket, développé dans le cadre du système Information Manifold, est implémenté dans \texttt{services/lav\_rewriter.py}. Son principe est de réduire le nombre de réécritures en considérant chaque sous-objectif (attribut) en isolation.
+
+\subsubsection{Étape 1 — Création des Buckets}
+Pour chaque attribut demandé dans la requête, on crée un \textbf{bucket} (seau) contenant les vues qui fournissent cet attribut et sont compatibles avec les filtres.
+
+\begin{lstlisting}[language=Python, caption=Création des Buckets]
+def _create_buckets(self, query, views, attrs):
+    buckets = {attr: [] for attr in attrs}
+    for view in views:
+        if not self._is_compatible(view, query.filters):
+            continue
+        covered = {a.global_attr
+                   for a in view.attributes
+                   if a.available}
+        for attr in attrs:
+            if attr in covered:
+                buckets[attr].append(view)
+    return buckets
+\end{lstlisting}
+
+\textbf{Exemple :} Pour la requête $Q(\text{isbn}, \text{titre}, \text{nb\_pages})$ sur LIVRE :
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Bucket} & \textbf{Vues pertinentes} \\
+\midrule
+Bucket[isbn] & S1, S2, S3 \\
+Bucket[titre] & S1, S2, S3 \\
+Bucket[nb\_pages] & S2, S3 \\
+\bottomrule
+\end{tabular}
+\caption{Buckets créés pour $Q(\text{isbn}, \text{titre}, \text{nb\_pages})$}
+\end{table}
+
+\subsubsection{Étape 2 — Combinaison}
+On calcule le \textbf{produit cartésien} des buckets pour obtenir toutes les combinaisons de vues couvrant tous les attributs :
+
+\begin{lstlisting}[language=Python, caption=Combinaison des Buckets]
+def _combine_buckets(self, buckets):
+    valid_buckets = [b for b in buckets.values() if b]
+    combinations = list(
+        itertools.product(*valid_buckets)
+    )
+    # Convertir en sets uniques
+    unique = []
+    for combo in combinations:
+        combo_set = set(combo)
+        if combo_set not in unique:
+            unique.append(combo_set)
+    return unique
+\end{lstlisting}
+
+Dans notre exemple, les combinaisons seraient : $\{S2\}$, $\{S3\}$, $\{S1, S2\}$, $\{S1, S3\}$, etc.
+
+\subsubsection{Étape 3 — Élimination}
+Les combinaisons redondantes sont éliminées. Une combinaison est redondante si un sous-ensemble strict couvre déjà tous les attributs. Dans notre contexte d'intégration, nous gardons la combinaison maximale pour obtenir le plus de données.
+
+\subsubsection{Étape 4 — Exécution asynchrone}
+Les vues sélectionnées sont exécutées en \textbf{parallèle} via \texttt{asyncio.gather}, puis les résultats sont fusionnés.
+
+\begin{lstlisting}[language=Python, caption=Exécution parallèle]
+async def _rewrite_and_execute(self, views, query):
+    async def safe_fetch(view):
+        rows = await view.fetch_fn()
+        # Appliquer filtres et projection
+        return view.source_name, rows
+
+    tasks = [safe_fetch(v) for v in views]
+    gathered = await asyncio.gather(
+        *tasks, return_exceptions=True
+    )
+    # Fusion des resultats
+    ...
+\end{lstlisting}
+
+% ================================================================
+\section{Superposition GAV et LAV}
+% ================================================================
+
+Notre système implémente les \textbf{deux approches simultanément}, chacune ayant un rôle complémentaire :
+
+\subsection{Complémentarité}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Critère} & \textbf{GAV} & \textbf{LAV} \\
+\midrule
+Fichier principal & \texttt{mediator.py} & \texttt{lav\_rewriter.py} \\
+Définition & Vue globale $\rightarrow$ sources & Source $\rightarrow$ vue globale \\
+Réécriture & Directe (codée en dur) & Automatique (Bucket) \\
+Ajout de source & Modifier le médiateur & Ajouter une vue LAV \\
+Requêtes & Prédéfinies (endpoints) & Dynamiques (attributs) \\
+Performance & Optimale (pas de calcul) & Légère surcharge (buckets) \\
+Flexibilité & Faible & Élevée \\
+\bottomrule
+\end{tabular}
+\caption{Comparaison GAV vs LAV}
+\end{table}
+
+\subsection{Comment les deux coexistent}
+
+\begin{enumerate}
+  \item \textbf{Endpoints GAV} (\texttt{/auteurs}, \texttt{/livres}, etc.) : Le médiateur appelle directement les 3 wrappers en parallèle et fusionne. C'est l'approche utilisée par le frontend pour l'affichage courant.
+
+  \item \textbf{Endpoints LAV} (\texttt{/lav/query}, \texttt{/lav/\{entity\}}) : Le moteur Bucket analyse la requête, détermine automatiquement quelles sources interroger selon les attributs demandés, exécute et fusionne. C'est l'approche utilisée par la page « Requêtes sur le Schéma Global ».
+
+  \item \textbf{CRUD multi-sources} : L'utilisateur choisit la source de destination dans un menu déroulant. Le backend route l'opération vers le wrapper correspondant.
+\end{enumerate}
+
+\subsection{Flux de données complet}
+
+\begin{enumerate}
+  \item L'utilisateur soumet une requête depuis le frontend React
+  \item L'API FastAPI reçoit la requête et choisit le mode :
+    \begin{itemize}
+      \item \textbf{GAV} : appel direct au Médiateur $\rightarrow$ wrappers $\rightarrow$ sources
+      \item \textbf{LAV} : appel au LAVRewriter $\rightarrow$ algorithme Bucket $\rightarrow$ wrappers $\rightarrow$ sources
+    \end{itemize}
+  \item Les wrappers transforment les données locales vers le schéma global (mise en conformité)
+  \item Le médiateur/rewriter fusionne et déduplique les résultats
+  \item Le frontend affiche les données avec indication de la source d'origine
+\end{enumerate}
+
+% ================================================================
+\section{Technologies Utilisées}
+% ================================================================
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Composant} & \textbf{Technologie} \\
+\midrule
+Backend API & FastAPI (Python, 100\% asynchrone) \\
+Source S1 & MySQL via \texttt{aiomysql} \\
+Source S2 & MongoDB via \texttt{motor} (async) \\
+Source S3 & Neo4j via driver officiel + threadpool \\
+Frontend & React + Material UI \\
+Parallélisme & \texttt{asyncio.gather} \\
+\bottomrule
+\end{tabular}
+\caption{Stack technologique}
+\end{table}
+
+% ================================================================
+\section{Conclusion}
+% ================================================================
+
+Ce projet démontre la faisabilité d'un système d'intégration de données hétérogènes combinant les approches GAV et LAV. L'approche GAV offre des performances optimales pour les requêtes prédéfinies, tandis que l'approche LAV avec l'algorithme Bucket permet une flexibilité accrue pour les requêtes ad hoc. La superposition des deux approches dans un même système permet de bénéficier des avantages de chacune tout en minimisant leurs limitations respectives.
+
+\end{document}
