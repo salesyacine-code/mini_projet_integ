@@ -64,18 +64,12 @@ class Mediator:
         self.s3 = WrapperS3()
         self._wrappers: dict[Source, object] = {"S1": self.s1, "S2": self.s2, "S3": self.s3}
 
-    # ════════════════════════════════════════════════════════
-    #  HELPERS PRIVÉS
-    # ════════════════════════════════════════════════════════
+   
     def _wrapper(self, source: Source):
         return self._wrappers[source]
 
     def _merge(self, entity: str, batches: list) -> list[dict]:
-        """
-        Fusionne les résultats de plusieurs sources.
-        Déduplique par la clé naturelle de l'entité.
-        Les sources indisponibles (Exception) sont ignorées silencieusement.
-        """
+       
         key = DEDUP_KEY.get(entity)
         seen = set()
         merged = []
@@ -161,7 +155,7 @@ class Mediator:
     async def get_appartient_theme(self) -> list[dict]:
         tasks = [self.s1.get_appartient_theme(), self.s2.get_appartient_theme(), self.s3.get_appartient_theme()]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        # Deduplication manuelle par tuple (livre_ref, theme_ref) car _merge ne gère qu'une clé
+        
         seen = set()
         merged = []
         for batch in results:

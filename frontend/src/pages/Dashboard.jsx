@@ -65,7 +65,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([api.stats(), api.health()])
-      .then(([s, h]) => { setStats(s); setHealth(h); })
+      .then(([s, h]) => { 
+          console.log("Stats:", s);
+        setStats(s); setHealth(h); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
