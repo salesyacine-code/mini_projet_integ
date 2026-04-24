@@ -3,7 +3,15 @@ import { api } from "../Api";
 import PageHeader from "../Layout/PageHeader";
 
 // MUI
-import { Box, Typography } from "@mui/material";
+import { 
+  Box, Typography, Paper, Grid, Stack, Button, Select, MenuItem, TextField,
+  Checkbox, FormControlLabel, Chip, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Tabs, Tab, Alert, Fade, Divider, InputLabel, FormControl
+} from "@mui/material";
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import SchemaIcon from '@mui/icons-material/Schema';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 // ── constantes ────────────────────────────────────────────────
 
@@ -80,10 +88,13 @@ const PRESET_QUERIES = [
 function SrcBadge({ src }) {
   const c = SRC_COLOR[src] || { bg:"#f1f5f9", text:"#475569" };
   return (
-    <span style={{
-      fontSize:11, fontWeight:600, padding:"3px 8px",
-      borderRadius:6, background:c.bg, color:c.text,
-    }}>{src}</span>
+    <Box sx={{
+      fontSize: 11, fontWeight: 600, px: 1, py: 0.5,
+      borderRadius: 1.5, bgcolor: c.bg, color: c.text,
+      display: 'inline-flex', alignItems: 'center'
+    }}>
+      {src}
+    </Box>
   );
 }
 
@@ -93,132 +104,114 @@ function PlanLine({ line }) {
   const isSection = line.startsWith("─");
   const isIndent  = line.startsWith("   └─");
 
-  let color = "#64748b";
-  if (isCheck) color = "#16a34a";
-  if (isCross) color = "#dc2626";
-  if (isSection) color = "#94a3b8";
-  if (isIndent)  color = "#94a3b8";
+  let color = "text.secondary";
+  if (isCheck) color = "success.main";
+  if (isCross) color = "error.main";
+  if (isSection || isIndent) color = "text.disabled";
 
   return (
-    <div style={{
+    <Typography sx={{
       fontSize: 13, lineHeight: 1.8,
       color,
       fontFamily: isIndent || isSection ? "monospace" : "inherit",
-      paddingLeft: isIndent ? 16 : 0,
+      pl: isIndent ? 2 : 0,
     }}>
       {line}
-    </div>
+    </Typography>
   );
 }
 
 function CoverageMap({ map }) {
   if (!map || Object.keys(map).length === 0) return null;
   return (
-    <div style={{ marginTop:16 }}>
-      <div style={{
-        fontSize:12, fontWeight:600, color:"#64748b",
-        textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:12,
-      }}>
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="overline" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: 1, mb: 2, display: 'block' }}>
         Couverture des attributs
-      </div>
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))",
-        gap:8,
-      }}>
+      </Typography>
+      <Grid container spacing={2}>
         {Object.entries(map).map(([attr, srcs]) => (
-          <div key={attr} style={{
-            display:"flex", alignItems:"center", justifyContent:"space-between",
-            padding:"8px 12px",
-            background:"#f8fafc", border: "1px solid #e2e8f0",
-            borderRadius:8, fontSize:13,
-          }}>
-            <span style={{ fontFamily:"monospace", color:"#0f172a", fontWeight: 500 }}>
-              {attr}
-            </span>
-            <div style={{ display:"flex", gap:6 }}>
-              {srcs.length > 0
-                ? srcs.map(s => <SrcBadge key={s} src={s} />)
-                : <span style={{ fontSize:12, color:"#94a3b8" }}>—</span>
-              }
-            </div>
-          </div>
+          <Grid item xs={12} sm={6} md={4} key={attr}>
+            <Box sx={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              p: 1.5, bgcolor: "grey.50", border: "1px solid", borderColor: "grey.200",
+              borderRadius: 2,
+            }}>
+              <Typography sx={{ fontFamily: "monospace", fontWeight: 500, fontSize: 13 }}>
+                {attr}
+              </Typography>
+              <Stack direction="row" spacing={0.5}>
+                {srcs.length > 0
+                  ? srcs.map(s => <SrcBadge key={s} src={s} />)
+                  : <Typography sx={{ fontSize: 12, color: "text.disabled" }}>—</Typography>
+                }
+              </Stack>
+            </Box>
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </Box>
   );
 }
 
 function ResultTable({ columns, rows }) {
   if (!rows || rows.length === 0) return (
-    <div style={{ textAlign:"center", padding:"32px 0", color:"#64748b", fontSize:14 }}>
+    <Box sx={{ textAlign: "center", p: 4, color: "text.secondary" }}>
       Aucun résultat
-    </div>
+    </Box>
   );
 
   return (
-    <div style={{ overflowX:"auto" }}>
-      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-        <thead style={{ background: "#f8fafc" }}>
-          <tr>
+    <TableContainer>
+      <Table size="small">
+        <TableHead sx={{ bgcolor: 'grey.50' }}>
+          <TableRow>
             {columns.map(col => (
-              <th key={col} style={{
-                textAlign:"left", padding:"12px 16px",
-                fontWeight:600, fontSize:12,
-                color:"#475569",
-                whiteSpace:"nowrap",
-                fontFamily: "monospace",
-                borderBottom: "1px solid #e2e8f0"
-              }}>{col}</th>
+              <TableCell key={col} sx={{ fontWeight: 600, fontSize: 12, color: 'text.secondary', fontFamily: 'monospace', py: 1.5 }}>
+                {col}
+              </TableCell>
             ))}
-          </tr>
-        </thead>
-        <tbody>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {rows.map((row, i) => (
-            <tr key={i} style={{ borderBottom:"1px solid #f1f5f9" }}>
+            <TableRow key={i} hover>
               {columns.map(col => {
                 const val = row[col];
                 if (col === "source") return (
-                  <td key={col} style={{ padding:"10px 16px" }}>
+                  <TableCell key={col}>
                     <SrcBadge src={val} />
-                  </td>
+                  </TableCell>
                 );
                 if (col === "disponibilite") return (
-                  <td key={col} style={{ padding:"10px 16px" }}>
-                    <span style={{
-                      fontSize:12, padding:"3px 8px", borderRadius:6, fontWeight:600,
-                      background: val ? "#dcfce7" : "#fee2e2",
-                      color: val ? "#16a34a" : "#dc2626",
-                    }}>
-                      {val ? "Disponible" : "Emprunté"}
-                    </span>
-                  </td>
+                  <TableCell key={col}>
+                    <Chip 
+                      label={val ? "Disponible" : "Emprunté"} 
+                      size="small"
+                      color={val ? "success" : "error"}
+                      sx={{ fontWeight: 600, fontSize: 11, height: 20 }}
+                    />
+                  </TableCell>
                 );
                 if (col === "themes" && Array.isArray(val)) return (
-                  <td key={col} style={{ padding:"10px 16px" }}>
-                    {val.map((t,ti) => (
-                      <span key={ti} style={{
-                        fontSize:11, padding:"2px 8px", borderRadius:6,
-                        background:"#eff6ff", color:"#1d4ed8", marginRight:4, fontWeight: 500
-                      }}>{t}</span>
-                    ))}
-                  </td>
+                  <TableCell key={col}>
+                    <Stack direction="row" spacing={0.5}>
+                      {val.map((t,ti) => (
+                        <Chip key={ti} label={t} size="small" color="primary" variant="outlined" sx={{ fontSize: 11, height: 20 }} />
+                      ))}
+                    </Stack>
+                  </TableCell>
                 );
                 return (
-                  <td key={col} style={{
-                    padding:"10px 16px", color:"#0f172a",
-                    whiteSpace:"nowrap", maxWidth:240,
-                    overflow:"hidden", textOverflow:"ellipsis",
-                  }}>
-                    {val == null ? <span style={{ color:"#94a3b8", fontStyle: "italic" }}>null</span> : String(val)}
-                  </td>
+                  <TableCell key={col} sx={{ maxWidth: 240, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {val == null ? <Typography variant="caption" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>null</Typography> : String(val)}
+                  </TableCell>
                 );
               })}
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
 
@@ -295,372 +288,359 @@ export default function LavPage() {
     : [];
 
   return (
-    <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
-      <PageHeader 
-        title="Approche LAV — Local As View" 
-        subtitle={<>Chaque source locale est une <strong>vue partielle</strong> du schéma global. Le moteur de réécriture sélectionne automatiquement les sources pertinentes selon les attributs demandés, puis fusionne les résultats.</>} 
-      />
+    <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: "auto", position: 'relative' }}>
+      
+      {/* Dynamic Background Blurs */}
+      <Box sx={{
+        position: 'absolute', top: -100, left: -100, width: 300, height: 300,
+        background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, rgba(0,0,0,0) 70%)',
+        zIndex: 0, pointerEvents: 'none'
+      }} />
+      <Box sx={{
+        position: 'absolute', bottom: 100, right: -50, width: 400, height: 400,
+        background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%)',
+        zIndex: 0, pointerEvents: 'none'
+      }} />
 
-      <div style={{
-        display:"inline-flex", gap:16, alignItems:"center",
-        background:"#f8fafc",
-        border:"1px solid #e2e8f0",
-        borderRadius:12, padding:"12px 20px", marginBottom:24, fontSize:13,
-        color:"#475569",
-      }}>
-        <span style={{ color:"#94a3b8", fontWeight: 600 }}>GAV vs LAV</span>
-        <span><strong>GAV</strong> = schéma global défini comme union des sources</span>
-        <span style={{ color:"#cbd5e1" }}>|</span>
-        <span><strong>LAV</strong> = chaque source décrite comme restriction du schéma global</span>
-      </div>
+      <Fade in={true} timeout={800}>
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <PageHeader 
+            title="Approche LAV — Local As View" 
+            subtitle={<>Chaque source locale est une <strong>vue partielle</strong> du schéma global. Le moteur de réécriture sélectionne automatiquement les sources pertinentes selon les attributs demandés, puis fusionne les résultats.</>} 
+          />
 
-      <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:24, alignItems:"start" }}>
+          <Paper sx={{ 
+            p: 2, mb: 4, borderRadius: 3, bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.100',
+            display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap'
+          }} elevation={0}>
+            <Typography variant="subtitle2" color="primary.700" fontWeight={700}>GAV vs LAV</Typography>
+            <Typography variant="body2" color="primary.900"><strong>GAV</strong> = schéma global défini comme union des sources</Typography>
+            <Typography variant="body2" color="primary.300">|</Typography>
+            <Typography variant="body2" color="primary.900"><strong>LAV</strong> = chaque source décrite comme restriction du schéma global</Typography>
+          </Paper>
 
-        {/* ── panneau gauche : requête ── */}
-        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-          {/* prédéfinies */}
-          <div style={{
-            background:"white",
-            border:"1px solid #e2e8f0",
-            borderRadius:12, overflow:"hidden",
-          }}>
-            <div style={{
-              padding:"12px 16px", fontSize:11, fontWeight:600,
-              color:"#64748b", textTransform:"uppercase",
-              letterSpacing:"0.05em",
-              borderBottom:"1px solid #e2e8f0",
-              background:"#f8fafc"
-            }}>
-              Requêtes prédéfinies
-            </div>
-            {PRESET_QUERIES.map((p,i) => (
-              <button key={i} onClick={() => applyPreset(i)} style={{
-                display:"block", width:"100%", textAlign:"left",
-                padding:"12px 16px", fontSize:13, border:"none",
-                borderBottom:"1px solid #f1f5f9",
-                cursor:"pointer", transition: "all 0.2s",
-                background: presetIdx===i ? "#eff6ff" : "white",
-                color: presetIdx===i ? "#1d4ed8" : "#475569",
-                fontWeight: presetIdx===i ? 600 : 500,
-              }}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* builder */}
-          <div style={{
-            background:"white",
-            border:"1px solid #e2e8f0",
-            borderRadius:12, padding:"20px",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-          }}>
-            {/* entité */}
-            <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
-                Entité globale
-              </label>
-              <select
-                value={entity}
-                onChange={e => { setEntity(e.target.value); setAttrs([]); setResult(null); setPresetIdx(null); }}
-                style={{ 
-                  width:"100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", 
-                  fontSize: 14, outline: "none", color: "#0f172a", fontFamily: "inherit"
-                }}
-              >
-                {ENTITIES.map(e => <option key={e}>{e}</option>)}
-              </select>
-            </div>
-
-            {/* attributs */}
-            <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
-                Attributs demandés
-                <span style={{ fontWeight:400, marginLeft:6, color: "#94a3b8" }}>(vide = tous)</span>
-              </label>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                {allAttrs.map(a => (
-                  <button key={a} onClick={() => toggleAttr(a)} style={{
-                    fontSize:12, padding:"4px 10px", borderRadius:6, cursor:"pointer",
-                    background: attrs.includes(a) ? "#2563eb" : "#f1f5f9",
-                    color: attrs.includes(a) ? "#fff" : "#475569",
-                    border: attrs.includes(a) ? "1px solid #2563eb" : "1px solid #e2e8f0",
-                    fontFamily:"monospace", transition: "all 0.15s", fontWeight: 500
-                  }}>
-                    {a}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* filtre */}
-            <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
-                Filtre (optionnel)
-              </label>
-              <div style={{ display:"flex", gap:8 }}>
-                <input
-                  value={filterKey}
-                  onChange={e => setFilterKey(e.target.value)}
-                  placeholder="attribut"
-                  style={{ flex:1, fontFamily:"monospace", fontSize:13, padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1" }}
-                />
-                <span style={{ alignSelf:"center", color:"#94a3b8", fontWeight: 600 }}>=</span>
-                <input
-                  value={filterVal}
-                  onChange={e => setFilterVal(e.target.value)}
-                  placeholder="valeur"
-                  style={{ flex:1, fontSize:13, padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1" }}
-                />
-              </div>
-              <div style={{ fontSize:11, color:"#94a3b8", marginTop:6 }}>
-                Booléens : true / false
-              </div>
-            </div>
-
-            {/* source forcée */}
-            <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12, fontWeight:600, color:"#475569", display:"block", marginBottom:8 }}>
-                Forcer une source
-              </label>
-              <div style={{ display:"flex", gap:6 }}>
-                {[null,"S1","S2","S3"].map(s => (
-                  <button key={s||"auto"} onClick={() => setForceSrc(s)} style={{
-                    flex: 1, fontSize:12, padding:"6px 0", borderRadius:6, cursor:"pointer",
-                    background: forceSrc===s
-                      ? (s ? SRC_COLOR[s]?.dot || "#2563eb" : "#2563eb")
-                      : "#f8fafc",
-                    color: forceSrc===s ? "#fff" : "#475569",
-                    border: forceSrc===s ? "1px solid transparent" : "1px solid #e2e8f0",
-                    fontWeight: 600, transition: "all 0.15s"
-                  }}>
-                    {s || "Auto"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* require_all */}
-            <div style={{ marginBottom:20 }}>
-              <label style={{ fontSize:13, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:10, color: "#475569" }}>
-                <input
-                  type="checkbox"
-                  checked={requireAll}
-                  onChange={e => setRequireAll(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: "#2563eb" }}
-                />
-                Exclure tuples incomplets
-              </label>
-            </div>
-
-            <button
-              onClick={runQuery}
-              disabled={loading}
-              style={{
-                width:"100%", background:"#2563eb", color:"#fff",
-                border:"none", padding:"12px 0", borderRadius:8,
-                fontSize:14, fontWeight: 600, cursor:"pointer", opacity: loading ? 0.7 : 1,
-                transition: "background 0.2s", boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
-              }}
-            >
-              {loading ? "Réécriture en cours..." : "▶  Exécuter (LAV)"}
-            </button>
-          </div>
-
-          {/* schema button */}
-          <button onClick={() => { loadSchema(); setActiveTab("schema"); }} style={{
-            padding:"12px 0", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight: 600,
-            background:"white", border:"1px solid #cbd5e1", color:"#475569", width:"100%",
-            transition: "background 0.2s"
-          }}>
-            Voir le schéma LAV complet
-          </button>
-        </div>
-
-        {/* ── panneau droit : résultats ── */}
-        <div>
-
-          {/* explication preset */}
-          {presetIdx !== null && (
-            <div style={{
-              padding:"14px 20px", borderRadius:12, marginBottom:16,
-              background:"#eff6ff", border:"1px solid #bfdbfe",
-              fontSize:14, color:"#1d4ed8", lineHeight:1.6,
-            }}>
-              <strong>Pourquoi cette requête est intéressante :</strong> {PRESET_QUERIES[presetIdx]?.explain}
-            </div>
-          )}
-
-          {error && (
-            <div style={{
-              padding:"14px 20px", borderRadius:12, marginBottom:16,
-              background:"#fef2f2", border:"1px solid #fecaca",
-              color:"#b91c1c", fontSize:14, fontWeight: 500
-            }}>
-              {error}
-            </div>
-          )}
-
-          {result && (
-            <>
-              {/* résumé */}
-              <div style={{
-                display:"flex", gap:12, marginBottom:16, flexWrap:"wrap",
-              }}>
-                <div style={{
-                  background:"white", border: "1px solid #e2e8f0",
-                  borderRadius:8, padding:"10px 16px", fontSize:13,
-                  color:"#475569", boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-                }}>
-                  <span style={{ fontWeight:700, color:"#0f172a", fontSize: 14 }}>
-                    {result.total}
-                  </span> résultat{result.total !== 1 ? "s" : ""}
-                </div>
-                <div style={{
-                  background:"white", border: "1px solid #e2e8f0",
-                  borderRadius:8, padding:"10px 16px", fontSize:13,
-                  display:"flex", gap:8, alignItems:"center", boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-                }}>
-                  <span style={{ color:"#64748b", fontWeight: 500 }}>Sources utilisées :</span>
-                  {result.sources_used.map(s => <SrcBadge key={s} src={s} />)}
-                </div>
-                {result.sources_skipped?.length > 0 && (
-                  <div style={{
-                    background:"white", border: "1px solid #e2e8f0",
-                    borderRadius:8, padding:"10px 16px", fontSize:13,
-                    display:"flex", gap:8, alignItems:"center", boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-                  }}>
-                    <span style={{ color:"#94a3b8", fontWeight: 500 }}>Ignorées :</span>
-                    {result.sources_skipped.map(s => (
-                      <span key={s} style={{
-                        fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight: 600,
-                        background:"#f1f5f9", color:"#94a3b8", textDecoration:"line-through",
-                      }}>{s}</span>
+          <Grid container spacing={4}>
+            
+            {/* ── panneau gauche : requête ── */}
+            <Grid item xs={12} md={4}>
+              <Stack spacing={3}>
+                
+                {/* prédéfinies */}
+                <Paper sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid', borderColor: 'grey.200' }} elevation={0}>
+                  <Box sx={{ p: 2, bgcolor: 'grey.50', borderBottom: '1px solid', borderColor: 'grey.200' }}>
+                    <Typography variant="overline" fontWeight={700} color="text.secondary">
+                      <AutoFixHighIcon fontSize="small" sx={{ verticalAlign: 'sub', mr: 1 }} />
+                      Requêtes prédéfinies
+                    </Typography>
+                  </Box>
+                  <Stack>
+                    {PRESET_QUERIES.map((p,i) => (
+                      <Box 
+                        key={i} 
+                        onClick={() => applyPreset(i)} 
+                        sx={{
+                          p: 2, borderBottom: '1px solid', borderColor: 'grey.100', cursor: 'pointer',
+                          bgcolor: presetIdx === i ? 'primary.50' : 'white',
+                          color: presetIdx === i ? 'primary.700' : 'text.primary',
+                          transition: 'all 0.2s',
+                          '&:hover': { bgcolor: presetIdx === i ? 'primary.50' : 'grey.50' }
+                        }}
+                      >
+                        <Typography variant="body2" fontWeight={presetIdx === i ? 600 : 500}>
+                          {p.label}
+                        </Typography>
+                      </Box>
                     ))}
-                  </div>
+                  </Stack>
+                </Paper>
+
+                {/* builder */}
+                <Paper sx={{ 
+                  p: 3, borderRadius: 3, 
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid', borderColor: 'grey.200',
+                  boxShadow: '0 10px 30px -10px rgba(0,0,0,0.05)'
+                }}>
+                  <Stack spacing={3}>
+                    {/* entité */}
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Entité globale</InputLabel>
+                      <Select
+                        value={entity}
+                        label="Entité globale"
+                        onChange={e => { setEntity(e.target.value); setAttrs([]); setResult(null); setPresetIdx(null); }}
+                        sx={{ borderRadius: 2 }}
+                      >
+                        {ENTITIES.map(e => <MenuItem key={e} value={e}>{e}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+
+                    {/* attributs */}
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Attributs demandés <Typography component="span" variant="caption">(vide = tous)</Typography>
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {allAttrs.map(a => (
+                          <Chip 
+                            key={a} 
+                            label={a} 
+                            onClick={() => toggleAttr(a)}
+                            color={attrs.includes(a) ? "primary" : "default"}
+                            variant={attrs.includes(a) ? "filled" : "outlined"}
+                            size="small"
+                            sx={{ fontFamily: 'monospace', borderRadius: 1.5, fontWeight: attrs.includes(a) ? 600 : 400 }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {/* filtre */}
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Filtre (optionnel)
+                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <TextField
+                          size="small"
+                          placeholder="attribut"
+                          value={filterKey}
+                          onChange={e => setFilterKey(e.target.value)}
+                          sx={{ flex: 1, '& .MuiOutlinedInput-root': { fontFamily: 'monospace', borderRadius: 2 } }}
+                        />
+                        <Typography color="text.secondary" fontWeight={700}>=</Typography>
+                        <TextField
+                          size="small"
+                          placeholder="valeur"
+                          value={filterVal}
+                          onChange={e => setFilterVal(e.target.value)}
+                          sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                        />
+                      </Stack>
+                    </Box>
+
+                    {/* source forcée */}
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Forcer une source
+                      </Typography>
+                      <Stack direction="row" spacing={1}>
+                        {[null,"S1","S2","S3"].map(s => (
+                          <Button 
+                            key={s||"auto"} 
+                            variant={forceSrc === s ? "contained" : "outlined"}
+                            onClick={() => setForceSrc(s)}
+                            disableElevation
+                            size="small"
+                            sx={{ 
+                              flex: 1, 
+                              borderRadius: 2, 
+                              color: forceSrc === s ? 'white' : 'text.secondary',
+                              borderColor: forceSrc === s ? 'transparent' : 'grey.300',
+                              bgcolor: forceSrc === s ? (s ? SRC_COLOR[s]?.dot : 'primary.main') : 'transparent'
+                            }}
+                          >
+                            {s || "Auto"}
+                          </Button>
+                        ))}
+                      </Stack>
+                    </Box>
+
+                    {/* require_all */}
+                    <FormControlLabel
+                      control={
+                        <Checkbox 
+                          checked={requireAll} 
+                          onChange={e => setRequireAll(e.target.checked)} 
+                          color="primary"
+                        />
+                      }
+                      label={<Typography variant="body2" color="text.secondary">Exclure tuples incomplets</Typography>}
+                    />
+
+                    <Button
+                      variant="contained"
+                      onClick={runQuery}
+                      disabled={loading}
+                      startIcon={<PlayArrowIcon />}
+                      size="large"
+                      sx={{ 
+                        borderRadius: 2, fontWeight: 700,
+                        background: 'linear-gradient(45deg, #10b981, #059669)',
+                        boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+                        '&:hover': { background: 'linear-gradient(45deg, #059669, #047857)' }
+                      }}
+                    >
+                      {loading ? "Réécriture..." : "Exécuter la requête (LAV)"}
+                    </Button>
+                  </Stack>
+                </Paper>
+
+                {/* schema button */}
+                <Button 
+                  variant="outlined"
+                  onClick={() => { loadSchema(); setActiveTab("schema"); }}
+                  startIcon={<SchemaIcon />}
+                  sx={{ borderRadius: 2, py: 1.5, fontWeight: 600, color: 'text.secondary', borderColor: 'grey.300', bgcolor: 'white' }}
+                >
+                  Voir le schéma LAV complet
+                </Button>
+              </Stack>
+            </Grid>
+
+            {/* ── panneau droit : résultats ── */}
+            <Grid item xs={12} md={8}>
+              <Stack spacing={3}>
+                
+                {/* explication preset */}
+                {presetIdx !== null && (
+                  <Fade in={true}>
+                    <Alert icon={<InfoOutlinedIcon />} severity="info" sx={{ borderRadius: 3, border: '1px solid', borderColor: 'info.200' }}>
+                      <Typography variant="body2">
+                        <strong>Pourquoi cette requête est intéressante :</strong> {PRESET_QUERIES[presetIdx]?.explain}
+                      </Typography>
+                    </Alert>
+                  </Fade>
                 )}
-              </div>
 
-              {/* onglets */}
-              <div style={{ display:"flex", gap:8, marginBottom:16 }}>
-                {[
-                  { id:"result",   label:`Résultats (${result.total})` },
-                  { id:"plan",     label:"Plan de réécriture" },
-                  { id:"coverage", label:"Couverture des attributs" },
-                ].map(t => (
-                  <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
-                    padding:"8px 16px", fontSize:13, borderRadius:8, cursor:"pointer", fontWeight: 600,
-                    background: activeTab===t.id ? "#2563eb" : "white",
-                    color: activeTab===t.id ? "#fff" : "#64748b",
-                    border: activeTab===t.id ? "1px solid #2563eb" : "1px solid #e2e8f0",
-                    transition: "all 0.2s"
-                  }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* contenu onglet */}
-              <div style={{
-                background:"white", border:"1px solid #e2e8f0",
-                borderRadius:12, overflow:"hidden", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
-              }}>
-                {activeTab === "result" && (
-                  <ResultTable columns={columns} rows={result.data} />
+                {error && (
+                  <Alert severity="error" sx={{ borderRadius: 3 }}>
+                    {error}
+                  </Alert>
                 )}
 
-                {activeTab === "plan" && (
-                  <div style={{ padding:"20px" }}>
-                    <div style={{
-                      fontSize:12, fontWeight:600, color:"#64748b",
-                      textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:16,
-                    }}>
-                      Plan de réécriture LAV
-                    </div>
-                    {result.rewriting_plan?.map((line, i) => (
-                      <PlanLine key={i} line={line} />
-                    ))}
-                  </div>
-                )}
+                {result && (
+                  <Box>
+                    {/* résumé */}
+                    <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                      <Paper sx={{ px: 2, py: 1, borderRadius: 2, border: '1px solid', borderColor: 'grey.200' }} elevation={0}>
+                        <Typography variant="body2" color="text.secondary">
+                          <Typography component="span" fontWeight={700} color="text.primary" fontSize={16}>{result.total}</Typography> résultat{result.total !== 1 ? "s" : ""}
+                        </Typography>
+                      </Paper>
+                      
+                      <Paper sx={{ px: 2, py: 1, borderRadius: 2, border: '1px solid', borderColor: 'grey.200', display: 'flex', alignItems: 'center', gap: 1 }} elevation={0}>
+                        <Typography variant="body2" color="text.secondary" fontWeight={500}>Sources utilisées :</Typography>
+                        {result.sources_used.map(s => <SrcBadge key={s} src={s} />)}
+                      </Paper>
 
-                {activeTab === "coverage" && (
-                  <div style={{ padding:"20px" }}>
-                    <CoverageMap map={result.coverage_map} />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+                      {result.sources_skipped?.length > 0 && (
+                        <Paper sx={{ px: 2, py: 1, borderRadius: 2, border: '1px solid', borderColor: 'grey.200', display: 'flex', alignItems: 'center', gap: 1 }} elevation={0}>
+                          <Typography variant="body2" color="text.secondary" fontWeight={500}>Ignorées :</Typography>
+                          {result.sources_skipped.map(s => (
+                            <Typography key={s} sx={{ fontSize: 11, px: 1, py: 0.5, borderRadius: 1.5, bgcolor: 'grey.100', color: 'text.disabled', textDecoration: 'line-through', fontWeight: 600 }}>
+                              {s}
+                            </Typography>
+                          ))}
+                        </Paper>
+                      )}
+                    </Stack>
 
-          {/* schéma LAV complet */}
-          {activeTab === "schema" && (
-            <div style={{
-              background:"white", border:"1px solid #e2e8f0",
-              borderRadius:12, padding:"24px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
-            }}>
-              <div style={{
-                fontSize:15, fontWeight:600, marginBottom:20, color:"#0f172a",
-              }}>
-                Schéma LAV — mappings sources → entités globales
-              </div>
-              {schemaLoading && (
-                <div style={{ color:"#64748b", fontSize:14, fontWeight: 500 }}>Chargement du schéma...</div>
-              )}
-              {schema && Object.entries(schema).map(([entity, info]) => (
-                <div key={entity} style={{ marginBottom:24 }}>
-                  <div style={{
-                    fontWeight:600, fontSize:14, marginBottom:10,
-                    color:"#0f172a", fontFamily:"monospace",
-                  }}>
-                    {entity}
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:12 }}>
-                    {info.sources.map(s => (
-                      <div key={s.source} style={{
-                        border:`1px solid ${SRC_COLOR[s.source]?.dot || "#cbd5e1"}44`,
-                        borderRadius:10, padding:"12px 16px",
-                        background:(SRC_COLOR[s.source]?.bg || "#f8fafc"),
-                      }}>
-                        <div style={{
-                          display:"flex", alignItems:"center", gap:8, marginBottom:8,
-                        }}>
-                          <SrcBadge src={s.source} />
-                          <span style={{
-                            fontSize:11, fontWeight: 600,
-                            color:(SRC_COLOR[s.source]?.dot || "#475569"),
-                          }}>
-                            {s.completeness}
-                          </span>
-                        </div>
-                        <div style={{ fontSize:12, color:"#475569", lineHeight:1.6 }}>
-                          {s.description}
-                        </div>
-                        {s.attributes_missing?.length > 0 && (
-                          <div style={{ marginTop:8, fontSize:11, color:"#94a3b8", fontWeight: 500 }}>
-                            Manquants : {s.attributes_missing.join(", ")}
-                          </div>
+                    {/* Tabs */}
+                    <Paper sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.200', overflow: 'hidden', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)' }}>
+                      <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
+                        <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ px: 2 }}>
+                          <Tab label={`Résultats (${result.total})`} value="result" sx={{ fontWeight: 600, textTransform: 'none' }} />
+                          <Tab label="Plan de réécriture" value="plan" sx={{ fontWeight: 600, textTransform: 'none' }} />
+                          <Tab label="Couverture des attributs" value="coverage" sx={{ fontWeight: 600, textTransform: 'none' }} />
+                        </Tabs>
+                      </Box>
+
+                      {/* contenu onglet */}
+                      <Box sx={{ bgcolor: 'white', minHeight: 400 }}>
+                        {activeTab === "result" && (
+                          <ResultTable columns={columns} rows={result.data} />
                         )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
-          {!result && activeTab !== "schema" && (
-            <div style={{
-              border:"1px dashed #cbd5e1", background: "#f8fafc",
-              borderRadius:12, padding:"60px 32px",
-              textAlign:"center", color:"#64748b", fontSize:14, fontWeight: 500
-            }}>
-              Sélectionnez une requête prédéfinie ou configurez votre requête,
-              puis cliquez sur Exécuter.
-            </div>
-          )}
-        </div>
-      </div>
+                        {activeTab === "plan" && (
+                          <Box sx={{ p: 3 }}>
+                            <Typography variant="overline" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: 1, mb: 2, display: 'block' }}>
+                              Plan de réécriture LAV
+                            </Typography>
+                            {result.rewriting_plan?.map((line, i) => (
+                              <PlanLine key={i} line={line} />
+                            ))}
+                          </Box>
+                        )}
+
+                        {activeTab === "coverage" && (
+                          <Box sx={{ p: 3 }}>
+                            <CoverageMap map={result.coverage_map} />
+                          </Box>
+                        )}
+                      </Box>
+                    </Paper>
+                  </Box>
+                )}
+
+                {/* schéma LAV complet */}
+                {activeTab === "schema" && (
+                  <Paper sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'grey.200', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)' }}>
+                    <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <SchemaIcon color="primary" />
+                      Schéma LAV — mappings sources → entités globales
+                    </Typography>
+                    
+                    {schemaLoading && (
+                      <Typography color="text.secondary">Chargement du schéma...</Typography>
+                    )}
+                    
+                    {schema && Object.entries(schema).map(([entityName, info]) => (
+                      <Box key={entityName} sx={{ mb: 4 }}>
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2, fontFamily: 'monospace', color: 'primary.main', bgcolor: 'primary.50', display: 'inline-block', px: 1.5, py: 0.5, borderRadius: 2 }}>
+                          {entityName}
+                        </Typography>
+                        <Grid container spacing={2}>
+                          {info.sources.map(s => (
+                            <Grid item xs={12} md={6} key={s.source}>
+                              <Box sx={{
+                                border: `1px solid ${SRC_COLOR[s.source]?.dot || "#cbd5e1"}44`,
+                                borderRadius: 3, p: 2, height: '100%',
+                                background: (SRC_COLOR[s.source]?.bg || "#f8fafc"),
+                              }}>
+                                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                                  <SrcBadge src={s.source} />
+                                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: SRC_COLOR[s.source]?.dot || 'text.secondary' }}>
+                                    {s.completeness}
+                                  </Typography>
+                                </Stack>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1, lineHeight: 1.6 }}>
+                                  {s.description}
+                                </Typography>
+                                {s.attributes_missing?.length > 0 && (
+                                  <Typography sx={{ mt: 1, fontSize: 11, color: 'text.disabled', fontWeight: 500 }}>
+                                    Manquants : {s.attributes_missing.join(", ")}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Grid>
+                          ))}
+                        </Grid>
+                        <Divider sx={{ mt: 3 }} />
+                      </Box>
+                    ))}
+                  </Paper>
+                )}
+
+                {!result && activeTab !== "schema" && (
+                  <Box sx={{
+                    border: "1px dashed", borderColor: "grey.300", bgcolor: "grey.50",
+                    borderRadius: 3, p: 8,
+                    textAlign: "center", display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
+                  }}>
+                    <AutoFixHighIcon sx={{ fontSize: 48, color: 'grey.300' }} />
+                    <Typography color="text.secondary" fontWeight={500}>
+                      Sélectionnez une requête prédéfinie ou configurez votre requête,
+                      <br/> puis cliquez sur Exécuter.
+                    </Typography>
+                  </Box>
+                )}
+              </Stack>
+            </Grid>
+          </Grid>
+        </Box>
+      </Fade>
     </Box>
   );
 }

@@ -1,4 +1,4 @@
-const BASE = "http://localhost:8000";
+const BASE = "http://127.0.0.1:8000";
 
 async function req(method, path, body) {
   const opts = { method, headers: { "Content-Type": "application/json" } };
