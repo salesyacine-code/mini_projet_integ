@@ -58,6 +58,35 @@ def _serialize(doc: dict) -> dict:
 class WrapperS2:
 
     # ════════════════════════════════════════════════════════
+    #  Generic Local CRUD
+    # ════════════════════════════════════════════════════════
+    async def local_read(self, collection: str) -> list[dict]:
+        db = get_s2_db()
+        docs = await db[collection].find({}).to_list(None)
+        return [_serialize(d) for d in docs]
+
+    async def local_insert(self, collection: str, data: dict) -> dict:
+        db = get_s2_db()
+        # Clean any _id from data if present to let mongo generate it
+        if "_id" in data:
+            del data["_id"]
+        result = await db[collection].insert_one(data)
+        return {**data, "_id": str(result.inserted_id)}
+
+    async def local_update(self, collection: str, id_val: str, data: dict) -> dict:
+        db = get_s2_db()
+        if "_id" in data:
+            del data["_id"]
+        if not data: return {}
+        await db[collection].update_one({"_id": _oid(id_val)}, {"$set": data})
+        return {"_id": id_val, **data}
+
+    async def local_delete(self, collection: str, id_val: str) -> bool:
+        db = get_s2_db()
+        result = await db[collection].delete_one({"_id": _oid(id_val)})
+        return result.deleted_count > 0
+
+    # ════════════════════════════════════════════════════════
     #  AUTEUR  (contributeurs[] avec role='auteur')
     # ════════════════════════════════════════════════════════
     async def get_auteurs(self) -> list[dict]:

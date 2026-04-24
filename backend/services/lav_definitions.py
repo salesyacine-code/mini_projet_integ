@@ -69,6 +69,14 @@ class LAVSourceView:
     completeness: str                    = "partial"   # "total" | "partial"
     fetch_fn:     Optional[Callable]     = None
 
+    def __hash__(self):
+        return hash((self.entity, self.source_name))
+
+    def __eq__(self, other):
+        if not isinstance(other, LAVSourceView):
+            return False
+        return self.entity == other.entity and self.source_name == other.source_name
+
 
 # ──────────────────────────────────────────────────────────────
 # Registre global des vues LAV

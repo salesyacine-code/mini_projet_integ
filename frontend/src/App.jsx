@@ -20,6 +20,7 @@ import SuggestionsPage from "./pages/SuggestionsPage";
 import SqlPage from "./pages/SqlPage";
 import HealthPage from "./pages/HealthPage";
 import SourcesPage from "./pages/SourcesPage";
+import SourceCrudPage from "./pages/SourceCrudPage";
 
 const TITLES = {
   dashboard: "Tableau de bord",
@@ -35,6 +36,7 @@ const TITLES = {
   sql: "Requêtes SQL",
   health: "État des sources",
   sources: "Données par Source",
+  sourcecrud: "CRUD Source",
 };
 
 function renderPage(page) {
@@ -52,6 +54,7 @@ function renderPage(page) {
     case "sql": return <SqlPage />;
     case "health": return <HealthPage />;
     case "sources": return <SourcesPage />;
+    case "sourcecrud": return <SourceCrudPage />;
     default: return <Dashboard />;
   }
 }

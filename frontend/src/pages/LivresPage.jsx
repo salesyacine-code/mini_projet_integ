@@ -30,11 +30,6 @@ export default function LivresPage() {
   const [source, setSource]         = useState(null);
   const [themeFilter, setThemeFilter] = useState("");
   const [titreFilter, setTitreFilter] = useState("");
-  const [open, setOpen]             = useState(false);
-  const [form, setForm]             = useState(EMPTY);
-  const [editId, setEditId]         = useState(null);
-  const [saving, setSaving]         = useState(false);
-  const [destSource, setDestSource] = useState("S1");
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
@@ -51,50 +46,11 @@ export default function LivresPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
-  const openEdit = (row) => {
-    setForm({
-      titre: row.titre || "", isbn: row.isbn || "",
-      annee_publication: row.annee_publication || "",
-      nb_pages: row.nb_pages || "", editeur: row.editeur || "",
-      auteur_id: row.auteur_id || "", theme: (row.themes || [])[0] || "",
-    });
-    setDestSource(row._source || "S1");
-    setEditId(row.livre_id);
-    setOpen(true);
-  };
-
-  const handleDelete = async (row) => {
-    if (!window.confirm(`Supprimer "${row.titre}" ?`)) return;
-    try { await api.deleteLivre(row.livre_id, row._source); load(); }
-    catch (e) { alert(e.message); }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (editId) await api.updateLivre(editId, form, destSource);
-      else        await api.createLivre(form, destSource);
-      setOpen(false); load();
-    } catch (e) { alert(e.message); }
-    finally { setSaving(false); }
-  };
-
-  const field = (key, label, type = "text", extra = {}) => (
-    <TextField
-      fullWidth size="small" label={label} type={type}
-      value={form[key]}
-      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-      InputLabelProps={type === "date" ? { shrink: true } : undefined}
-      {...extra}
-    />
-  );
-
   return (
     <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
       <PageHeader 
         title="Livres" 
-        subtitle="Vue globale LIVRE — S1 (LIVRE) · S2 (ouvrages) · S3 (Book). Dédupliqués par ISBN." 
+        subtitle="Vue globale LIVRE — S1 (LIVRE) · S2 (ouvrages) · S3 (Book). Dédupliqués par ISBN. Lecture seule." 
       />
 
       {/* Filtres */}
@@ -127,60 +83,8 @@ export default function LivresPage() {
 
       <DataTable
         columns={COLS} rows={rows} loading={loading} error={error}
-        onEdit={openEdit}
-        onDelete={handleDelete}
-        onAdd={openAdd} addLabel="Nouveau livre"
         sourceFilter={source} onSourceFilter={setSource}
       />
-
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle className="flex items-center justify-between pr-3">
-          <Typography variant="subtitle1" className="font-medium">
-            {editId ? "Modifier le livre" : "Nouveau livre"}
-          </Typography>
-          <IconButton size="small" onClick={() => setOpen(false)}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers>
-          <Stack spacing={2} className="pt-1">
-            <FormControl fullWidth size="small">
-              <InputLabel>Source de destination</InputLabel>
-              <Select
-                value={destSource}
-                label="Source de destination"
-                onChange={(e) => setDestSource(e.target.value)}
-                disabled={!!editId}
-              >
-                <MenuItem value="S1">S1 (MySQL)</MenuItem>
-                <MenuItem value="S2">S2 (MongoDB)</MenuItem>
-                <MenuItem value="S3">S3 (Neo4j)</MenuItem>
-              </Select>
-            </FormControl>
-            {field("titre",             "Titre *")}
-            {field("isbn",              "ISBN")}
-            {field("annee_publication", "Année de publication", "number")}
-            {field("nb_pages",          "Nombre de pages", "number")}
-            {field("editeur",           "Éditeur")}
-            {field("auteur_id",         "ID Auteur")}
-            {field("theme",             "Thème")}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions className="px-6 py-3">
-          <Button variant="text" onClick={() => setOpen(false)} className="text-gray-500 normal-case">
-            Annuler
-          </Button>
-          <Button
-            variant="contained" disableElevation onClick={handleSave}
-            disabled={saving} className="normal-case"
-            startIcon={saving ? <CircularProgress size={14} color="inherit" /> : null}
-          >
-            {editId ? "Mettre à jour" : "Créer"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

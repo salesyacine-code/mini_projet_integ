@@ -24,11 +24,6 @@ export default function AuteursPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
   const [source, setSource]   = useState(null);
-  const [open, setOpen]       = useState(false);
-  const [form, setForm]       = useState(EMPTY);
-  const [editId, setEditId]   = useState(null);
-  const [saving, setSaving]   = useState(false);
-  const [destSource, setDestSource] = useState("S1");
 
   const load = useCallback(() => {
     setLoading(true); setError(null);
@@ -41,109 +36,17 @@ export default function AuteursPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openAdd = () => { setForm(EMPTY); setEditId(null); setOpen(true); };
-  const openEdit = (row) => {
-    setForm({
-      nom: row.nom || "", prenom: row.prenom || "",
-      nationalite: row.nationalite || "", date_naissance: row.date_naissance || "",
-    });
-    setDestSource(row._source || "S1");
-    setEditId(row.auteur_id);
-    setOpen(true);
-  };
-
-  const handleDelete = async (row) => {
-    if (!window.confirm(`Supprimer ${row.nom} ${row.prenom} ?`)) return;
-    try { await api.deleteAuteur(row.auteur_id, row._source); load(); }
-    catch (e) { alert(e.message); }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      if (editId) await api.updateAuteur(editId, form, destSource);
-      else        await api.createAuteur(form, destSource);
-      setOpen(false); load();
-    } catch (e) { alert(e.message); }
-    finally { setSaving(false); }
-  };
-
-  const field = (key, label, type = "text", extra = {}) => (
-    <TextField
-      fullWidth
-      size="small"
-      label={label}
-      type={type}
-      value={form[key]}
-      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-      InputLabelProps={type === "date" ? { shrink: true } : undefined}
-      {...extra}
-    />
-  );
-
   return (
     <Box sx={{ p: 4, maxWidth: 1400, mx: "auto" }}>
       <PageHeader 
         title="Auteurs" 
-        subtitle="Vue globale AUTEUR — S1 (AUTEUR) · S2 (contributeurs[role=auteur]) · S3 (Writer)" 
+        subtitle="Vue globale AUTEUR — S1 (AUTEUR) · S2 (contributeurs[role=auteur]) · S3 (Writer). Lecture seule." 
       />
 
       <DataTable
         columns={COLS} rows={rows} loading={loading} error={error}
-        onEdit={openEdit}
-        onDelete={handleDelete}
-        onAdd={openAdd} addLabel="Nouvel auteur"
         sourceFilter={source} onSourceFilter={setSource}
       />
-
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle className="flex items-center justify-between pr-3">
-          <Typography variant="subtitle1" className="font-medium">
-            {editId ? "Modifier l'auteur" : "Nouvel auteur"}
-          </Typography>
-          <IconButton size="small" onClick={() => setOpen(false)}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers>
-          <Stack spacing={2} className="pt-1">
-            <FormControl fullWidth size="small">
-              <InputLabel>Source de destination</InputLabel>
-              <Select
-                value={destSource}
-                label="Source de destination"
-                onChange={(e) => setDestSource(e.target.value)}
-                disabled={!!editId} // Optionnel: on ne peut changer la source que lors de la création
-              >
-                <MenuItem value="S1">S1 (MySQL)</MenuItem>
-                <MenuItem value="S2">S2 (MongoDB)</MenuItem>
-                <MenuItem value="S3">S3 (Neo4j)</MenuItem>
-              </Select>
-            </FormControl>
-            {field("nom",            "Nom *")}
-            {field("prenom",         "Prénom")}
-            {field("nationalite",    "Nationalité")}
-            {field("date_naissance", "Date de naissance", "date")}
-          </Stack>
-        </DialogContent>
-
-        <DialogActions className="px-6 py-3">
-          <Button variant="text" onClick={() => setOpen(false)} className="text-gray-500 normal-case">
-            Annuler
-          </Button>
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={handleSave}
-            disabled={saving}
-            className="normal-case"
-            startIcon={saving ? <CircularProgress size={14} color="inherit" /> : null}
-          >
-            {editId ? "Mettre à jour" : "Créer"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

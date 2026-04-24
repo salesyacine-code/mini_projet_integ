@@ -15,6 +15,7 @@ import StyleIcon from "@mui/icons-material/Style";
 import CategoryIcon from "@mui/icons-material/Category";
 import ChatIcon from "@mui/icons-material/Chat";
 import CompareIcon from "@mui/icons-material/Compare";
+import EditNoteIcon from "@mui/icons-material/EditNote";
 
 const MENU = [
   {
@@ -48,6 +49,7 @@ const MENU = [
   {
     group: "Intégration",
     items: [
+      { id:"sourcecrud", label:"CRUD Local", icon: <EditNoteIcon />, highlight:true },
       { id:"sql",     label:"Requêtes SQL",        icon: <StorageIcon /> },
       { id:"sources", label:"Données par Source",   icon: <CompareIcon />, badge:"S1·S2·S3", highlight:true },
       { id:"lav",     label:"LAV — Local As View",  highlight:true, icon: <SettingsInputComponentIcon /> },

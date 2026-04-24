@@ -42,6 +42,35 @@ class WrapperS1:
                 return cur.lastrowid or cur.rowcount
 
     # ════════════════════════════════════════════════════════
+    #  Generic Local CRUD
+    # ════════════════════════════════════════════════════════
+    async def local_read(self, table: str) -> list[dict]:
+        return await self._fetch_all(f"SELECT * FROM {table}")
+
+    async def local_insert(self, table: str, data: dict) -> dict:
+        keys = list(data.keys())
+        values = tuple(data[k] for k in keys)
+        placeholders = ",".join(["%s"] * len(keys))
+        cols = ",".join(keys)
+        sql = f"INSERT INTO {table} ({cols}) VALUES ({placeholders})"
+        lid = await self._execute(sql, values)
+        return {**data, "inserted_id": lid}
+
+    async def local_update(self, table: str, id_col: str, id_val: any, data: dict) -> dict:
+        keys = list(data.keys())
+        if not keys: return {}
+        values = tuple(data[k] for k in keys) + (id_val,)
+        set_clause = ", ".join(f"{k}=%s" for k in keys)
+        sql = f"UPDATE {table} SET {set_clause} WHERE {id_col}=%s"
+        await self._execute(sql, values)
+        return data
+
+    async def local_delete(self, table: str, id_col: str, id_val: any) -> bool:
+        sql = f"DELETE FROM {table} WHERE {id_col}=%s"
+        n = await self._execute(sql, (id_val,))
+        return n > 0
+
+    # ════════════════════════════════════════════════════════
     #  AUTEUR
     # ════════════════════════════════════════════════════════
     async def get_auteurs(self) -> list[dict]:

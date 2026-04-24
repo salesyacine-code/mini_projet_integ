@@ -28,31 +28,23 @@ export const api = {
   suggestions:     (p="") => req("GET", `/suggestions${p}`),
   appartientTheme: (p="") => req("GET", `/appartient-theme${p}`),
 
-  // CRUD S1
-  createAuteur:     (d, s="S1")     => req("POST",   `/auteurs?source=${s}`, d),
-  updateAuteur:     (id, d, s="S1") => req("PUT",    `/auteurs/${id}?source=${s}`, d),
-  deleteAuteur:     (id, s="S1")    => req("DELETE", `/auteurs/${id}?source=${s}`),
+  // Local CRUD S1
+  s1Read:   (table) => req("GET", `/s1/${table}`),
+  s1Create: (table, data) => req("POST", `/s1/${table}`, data),
+  s1Update: (table, idCol, idVal, data) => req("PUT", `/s1/${table}/${idCol}/${idVal}`, data),
+  s1Delete: (table, idCol, idVal) => req("DELETE", `/s1/${table}/${idCol}/${idVal}`),
 
-  createLivre:      (d, s="S1")     => req("POST",   `/livres?source=${s}`, d),
-  updateLivre:      (id, d, s="S1") => req("PUT",    `/livres/${id}?source=${s}`, d),
-  deleteLivre:      (id, s="S1")    => req("DELETE", `/livres/${id}?source=${s}`),
+  // Local CRUD S2
+  s2Read:   (collection) => req("GET", `/s2/${collection}`),
+  s2Create: (collection, data) => req("POST", `/s2/${collection}`, data),
+  s2Update: (collection, idVal, data) => req("PUT", `/s2/${collection}/${idVal}`, data),
+  s2Delete: (collection, idVal) => req("DELETE", `/s2/${collection}/${idVal}`),
 
-  createAdherent:   (d, s="S1")     => req("POST",   `/adherents?source=${s}`, d),
-  updateAdherent:   (id, d, s="S1") => req("PUT",    `/adherents/${id}?source=${s}`, d),
-  deleteAdherent:   (id, s="S1")    => req("DELETE", `/adherents/${id}?source=${s}`),
-
-  createEnseignant: (d, s="S1")     => req("POST",   `/enseignants?source=${s}`, d),
-  updateEnseignant: (id, d, s="S1") => req("PUT",    `/enseignants/${id}?source=${s}`, d),
-  deleteEnseignant: (id, s="S1")    => req("DELETE", `/enseignants/${id}?source=${s}`),
-
-  createExemplaire: (d, s="S1")     => req("POST",   `/exemplaires?source=${s}`, d),
-  deleteExemplaire: (id, s="S1")    => req("DELETE", `/exemplaires/${id}?source=${s}`),
-
-  createEmprunt:    (d, s="S1")     => req("POST",   `/emprunts?source=${s}`, d),
-  updateEmprunt:    (id, d, s="S1") => req("PUT",    `/emprunts/${id}?source=${s}`, d),
-
-  createSuggestion: (d, s="S1")     => req("POST",   `/suggestions?source=${s}`, d),
-  deleteSuggestion: (id, s="S1")    => req("DELETE", `/suggestions/${id}?source=${s}`),
+  // Local CRUD S3
+  s3Read:   (label) => req("GET", `/s3/${label}`),
+  s3Create: (label, data) => req("POST", `/s3/${label}`, data),
+  s3Update: (label, idVal, data) => req("PUT", `/s3/${label}/${idVal}`, data),
+  s3Delete: (label, idVal) => req("DELETE", `/s3/${label}/${idVal}`),
 
   // SQL
   runSQL: (sql) => req("POST", "/query/sql", { sql }),

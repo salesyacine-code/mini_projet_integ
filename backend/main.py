@@ -235,105 +235,66 @@ async def get_suggestions():
 
 
 # ══════════════════════════════════════════════════════════════
-# CRUD — Multi-Sources (Spécifier S1, S2, ou S3)
+# ══════════════════════════════════════════════════════════════
+# CRUD — Local Schema (Opérations directes sur chaque source)
 # ══════════════════════════════════════════════════════════════
 
-# ── AUTEUR ────────────────────────────────────────────────────
-@app.post("/auteurs", tags=["CRUD"])
-async def create_auteur(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_auteur(data)
-    return {"message": f"Auteur créé dans {source.upper()}"}
+# ── S1 (MySQL) ──────────────────────────────────────────────
+@app.get("/s1/{table}", tags=["CRUD S1"])
+async def s1_read(table: str):
+    return await s1_crud.local_read(table)
 
-@app.put("/auteurs/{auteur_id}", tags=["CRUD"])
-async def update_auteur(auteur_id: str, data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).update_auteur(auteur_id, data)
-    return {"message": f"Auteur modifié dans {source.upper()}"}
+@app.post("/s1/{table}", tags=["CRUD S1"])
+async def s1_create(table: str, data: dict = Body(...)):
+    return await s1_crud.local_insert(table, data)
 
-@app.delete("/auteurs/{auteur_id}", tags=["CRUD"])
-async def delete_auteur(auteur_id: str, source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).delete_auteur(auteur_id)
-    return {"message": f"Auteur supprimé de {source.upper()}"}
+@app.put("/s1/{table}/{id_col}/{id_val}", tags=["CRUD S1"])
+async def s1_update(table: str, id_col: str, id_val: str, data: dict = Body(...)):
+    return await s1_crud.local_update(table, id_col, id_val, data)
 
-# ── LIVRE ─────────────────────────────────────────────────────
-@app.post("/livres", tags=["CRUD"])
-async def create_livre(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_livre(data)
-    return {"message": f"Livre créé dans {source.upper()}"}
+@app.delete("/s1/{table}/{id_col}/{id_val}", tags=["CRUD S1"])
+async def s1_delete(table: str, id_col: str, id_val: str):
+    success = await s1_crud.local_delete(table, id_col, id_val)
+    if not success: raise HTTPException(404, "Non trouvé")
+    return {"message": "Supprimé"}
 
-@app.put("/livres/{isbn}", tags=["CRUD"])
-async def update_livre(isbn: str, data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).update_livre(isbn, data)
-    return {"message": f"Livre modifié dans {source.upper()}"}
+# ── S2 (MongoDB) ────────────────────────────────────────────
+@app.get("/s2/{collection}", tags=["CRUD S2"])
+async def s2_read(collection: str):
+    return await s2_crud.local_read(collection)
 
-@app.delete("/livres/{isbn}", tags=["CRUD"])
-async def delete_livre(isbn: str, source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).delete_livre(isbn)
-    return {"message": f"Livre supprimé de {source.upper()}"}
+@app.post("/s2/{collection}", tags=["CRUD S2"])
+async def s2_create(collection: str, data: dict = Body(...)):
+    return await s2_crud.local_insert(collection, data)
 
-# ── ADHERENT ──────────────────────────────────────────────────
-@app.post("/adherents", tags=["CRUD"])
-async def create_adherent(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_adherent(data)
-    return {"message": f"Adhérent créé dans {source.upper()}"}
+@app.put("/s2/{collection}/{id_val}", tags=["CRUD S2"])
+async def s2_update(collection: str, id_val: str, data: dict = Body(...)):
+    return await s2_crud.local_update(collection, id_val, data)
 
-@app.put("/adherents/{pid}", tags=["CRUD"])
-async def update_adherent(pid: str, data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).update_adherent(pid, data)
-    return {"message": f"Adhérent modifié dans {source.upper()}"}
+@app.delete("/s2/{collection}/{id_val}", tags=["CRUD S2"])
+async def s2_delete(collection: str, id_val: str):
+    success = await s2_crud.local_delete(collection, id_val)
+    if not success: raise HTTPException(404, "Non trouvé")
+    return {"message": "Supprimé"}
 
-@app.delete("/adherents/{pid}", tags=["CRUD"])
-async def delete_adherent(pid: str, source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).delete_adherent(pid)
-    return {"message": f"Adhérent supprimé de {source.upper()}"}
+# ── S3 (Neo4j) ──────────────────────────────────────────────
+@app.get("/s3/{label}", tags=["CRUD S3"])
+async def s3_read(label: str):
+    return await s3_crud.local_read(label)
 
-# ── ENSEIGNANT ────────────────────────────────────────────────
-@app.post("/enseignants", tags=["CRUD"])
-async def create_enseignant(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_enseignant(data)
-    return {"message": f"Enseignant créé dans {source.upper()}"}
+@app.post("/s3/{label}", tags=["CRUD S3"])
+async def s3_create(label: str, data: dict = Body(...)):
+    return await s3_crud.local_insert(label, data)
 
-@app.put("/enseignants/{pid}", tags=["CRUD"])
-async def update_enseignant(pid: str, data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).update_enseignant(pid, data)
-    return {"message": f"Enseignant modifié dans {source.upper()}"}
+@app.put("/s3/{label}/{id_val}", tags=["CRUD S3"])
+async def s3_update(label: str, id_val: int, data: dict = Body(...)):
+    return await s3_crud.local_update(label, id_val, data)
 
-@app.delete("/enseignants/{pid}", tags=["CRUD"])
-async def delete_enseignant(pid: str, source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).delete_enseignant(pid)
-    return {"message": f"Enseignant supprimé de {source.upper()}"}
-
-# ── EXEMPLAIRE ────────────────────────────────────────────────
-@app.post("/exemplaires", tags=["CRUD"])
-async def create_exemplaire(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_exemplaire(data.get("livre_ref") or data.get("livre_id"), data)
-    return {"message": f"Exemplaire créé dans {source.upper()}"}
-
-@app.delete("/exemplaires/{eid}", tags=["CRUD"])
-async def delete_exemplaire(eid: str, source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).delete_exemplaire(eid)
-    return {"message": f"Exemplaire supprimé de {source.upper()}"}
-
-# ── EMPRUNT ───────────────────────────────────────────────────
-@app.post("/emprunts", tags=["CRUD"])
-async def create_emprunt(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_emprunt(data)
-    return {"message": f"Emprunt créé dans {source.upper()}"}
-
-@app.put("/emprunts/{eid}", tags=["CRUD"])
-async def update_emprunt(eid: str, data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).update_emprunt(data.get("adherent_id"), data.get("exemplaire_id"), data)
-    return {"message": f"Emprunt modifié dans {source.upper()}"}
-
-# ── SUGGESTION ────────────────────────────────────────────────
-@app.post("/suggestions", tags=["CRUD"])
-async def create_suggestion(data: dict = Body(...), source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).create_suggestion(data)
-    return {"message": f"Suggestion créée dans {source.upper()}"}
-
-@app.delete("/suggestions/{sid}", tags=["CRUD"])
-async def delete_suggestion(sid: str, source: str = Query("S1", description="S1 | S2 | S3")):
-    await get_wrapper(source).delete_suggestion(sid, None)
-    return {"message": f"Suggestion supprimée de {source.upper()}"}
+@app.delete("/s3/{label}/{id_val}", tags=["CRUD S3"])
+async def s3_delete(label: str, id_val: int):
+    success = await s3_crud.local_delete(label, id_val)
+    if not success: raise HTTPException(404, "Non trouvé")
+    return {"message": "Supprimé"}
 
 
 # ══════════════════════════════════════════════════════════════

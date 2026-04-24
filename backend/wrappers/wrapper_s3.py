@@ -29,8 +29,39 @@ def _join_name(prenom: str, nom: str) -> str:
 class WrapperS3:
 
     # ════════════════════════════════════════════════════════
-    #  AUTEUR  (nœuds Writer)
+    #  Generic Local CRUD
     # ════════════════════════════════════════════════════════
+    async def local_read(self, label: str) -> list[dict]:
+        rows = await run_s3_query(f"MATCH (n:{label}) RETURN id(n) AS _id, n")
+        return [{"_id": r["_id"], **r["n"]} for r in rows]
+
+    async def local_insert(self, label: str, data: dict) -> dict:
+        if "_id" in data:
+            del data["_id"]
+        # run_s3_query with CREATE allows returning the id and the properties
+        query = f"CREATE (n:{label}) SET n = $props RETURN id(n) AS _id, n"
+        rows = await run_s3_query(query, {"props": data})
+        if rows:
+            return {"_id": rows[0]["_id"], **rows[0]["n"]}
+        return data
+
+    async def local_update(self, label: str, id_val: int, data: dict) -> dict:
+        if "_id" in data:
+            del data["_id"]
+        # Use elementId or id() -> here id() is int
+        query = f"MATCH (n:{label}) WHERE id(n) = $id SET n += $props RETURN id(n) AS _id, n"
+        rows = await run_s3_query(query, {"id": int(id_val), "props": data})
+        if rows:
+            return {"_id": rows[0]["_id"], **rows[0]["n"]}
+        return data
+
+    async def local_delete(self, label: str, id_val: int) -> bool:
+        query = f"MATCH (n:{label}) WHERE id(n) = $id DETACH DELETE n"
+        counters = await run_s3_write(query, {"id": int(id_val)})
+        return counters.get("nodes_deleted", 0) > 0
+
+    # Actually, we need to redefine local_insert to use run_s3_query if we want the ID back.
+    # Wait, let's look at database.py to see run_s3_write.
     async def get_auteurs(self) -> list[dict]:
         rows = await run_s3_query("MATCH (w:Writer) RETURN w")
         result = []
