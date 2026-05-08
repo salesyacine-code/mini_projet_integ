@@ -21,41 +21,57 @@ import SqlPage from "./pages/SqlPage";
 import HealthPage from "./pages/HealthPage";
 import SourcesPage from "./pages/SourcesPage";
 import SourceCrudPage from "./pages/SourceCrudPage";
+import LavPage from "./pages/LavPage";
 
 const TITLES = {
-  dashboard: "Tableau de bord",
-  auteurs: "Auteurs",
-  themes: "Thèmes",
-  livres: "Livres",
+  // Vue d'ensemble
+  dashboard:   "Tableau de bord",
+  // Catalogue global (GAV)
+  livres:      "Livres",
+  auteurs:     "Auteurs",
+  themes:      "Thèmes",
   exemplaires: "Exemplaires",
-  personnes: "Personnes",
-  adherents: "Adhérents",
+  // Personnes (GAV)
+  personnes:   "Toutes les Personnes",
+  adherents:   "Adhérents",
   enseignants: "Enseignants",
-  emprunts: "Emprunts",
+  // Activités (GAV)
+  emprunts:    "Emprunts",
   suggestions: "Suggestions",
-  sql: "Requêtes SQL",
-  health: "État des sources",
-  sources: "Données par Source",
-  sourcecrud: "CRUD Source",
+  // Sources locales
+  sources:     "Comparaison par Source",
+  sourcecrud:  "CRUD Source Directe",
+  // Médiation & Requêtes
+  lav:         "LAV — Local As View",
+  sql:         "Requêtes SQL Directes",
+  // Système
+  health:      "État des Connexions",
 };
 
 function renderPage(page) {
   switch (page) {
-    case "dashboard": return <Dashboard />;
-    case "auteurs": return <AuteursPage />;
-    case "themes": return <ThemesPage />;
-    case "livres": return <LivresPage />;
+    case "dashboard":   return <Dashboard />;
+    // Catalogue
+    case "livres":      return <LivresPage />;
+    case "auteurs":     return <AuteursPage />;
+    case "themes":      return <ThemesPage />;
     case "exemplaires": return <ExemplairesPage />;
-    case "personnes": return <PersonnesAllPage />;
-    case "adherents": return <PersonnesPage subtype="adherents" />;
+    // Personnes
+    case "personnes":   return <PersonnesAllPage />;
+    case "adherents":   return <PersonnesPage subtype="adherents" />;
     case "enseignants": return <PersonnesPage subtype="enseignants" />;
-    case "emprunts": return <EmpruntsPage />;
+    // Activités
+    case "emprunts":    return <EmpruntsPage />;
     case "suggestions": return <SuggestionsPage />;
-    case "sql": return <SqlPage />;
-    case "health": return <HealthPage />;
-    case "sources": return <SourcesPage />;
-    case "sourcecrud": return <SourceCrudPage />;
-    default: return <Dashboard />;
+    // Sources locales
+    case "sources":     return <SourcesPage />;
+    case "sourcecrud":  return <SourceCrudPage />;
+    // Médiation
+    case "lav":         return <LavPage />;
+    case "sql":         return <SqlPage />;
+    // Système
+    case "health":      return <HealthPage />;
+    default:            return <Dashboard />;
   }
 }
 

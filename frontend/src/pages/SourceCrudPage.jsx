@@ -14,22 +14,21 @@ const SOURCES_CONFIG = {
   S1: {
     label: "MySQL (Relationnel)",
     color: "#00758F",
-    entities: ["AUTEUR", "THEME", "LIVRE", "EXEMPLAIRE", "ADHERENT", "ENSEIGNANT", "EMPRUNT", "SUGGESTION"],
+    entities: ["AUTEUR", "LIVRE", "EXEMPLAIRE", "ADHERENT", "ENSEIGNANT", "EMPRUNT", "SUGGESTION"],
     idColMap: {
-      "AUTEUR": "auteur_id", "THEME": "theme_id", "LIVRE": "livre_id",
+      "AUTEUR": "auteur_id", "LIVRE": "livre_id",
       "EXEMPLAIRE": "exemplaire_id", "ADHERENT": "adherent_id",
       "ENSEIGNANT": "enseignant_id", "EMPRUNT": "emprunt_id",
       "SUGGESTION": "suggestion_id"
     },
     schema: {
-        "AUTEUR": ["nom", "prenom"],
-        "THEME": ["nom", "description"],
-        "LIVRE": ["titre", "annee_publication", "theme_id", "auteur_id"],
-        "EXEMPLAIRE": ["livre_id", "etat", "date_acquisition"],
-        "ADHERENT": ["nom", "prenom", "email", "date_inscription"],
+        "AUTEUR": ["nom", "prenom", "nationalite", "date_naissance"],
+        "LIVRE": ["isbn", "titre", "annee_publication", "auteur_id", "theme"],
+        "EXEMPLAIRE": ["livre_id", "code_barre", "etat", "disponibilite"],
+        "ADHERENT": ["nom", "prenom", "email", "telephone", "date_inscription"],
         "ENSEIGNANT": ["nom", "prenom", "email", "departement"],
-        "EMPRUNT": ["adherent_id", "exemplaire_id", "date_emprunt", "date_retour_prevue", "date_retour_reelle"],
-        "SUGGESTION": ["adherent_id", "titre_suggere", "date_suggestion"]
+        "EMPRUNT": ["exemplaire_id", "adherent_id", "date_emprunt", "date_retour_prevue", "statut"],
+        "SUGGESTION": ["enseignant_id", "livre_id", "date_suggestion", "raison"]
     }
   },
   S2: {
@@ -38,8 +37,8 @@ const SOURCES_CONFIG = {
     entities: ["ouvrages", "adherant"],
     idColMap: { "ouvrages": "_id", "adherant": "_id" },
     schema: {
-        "ouvrages": ["titre", "auteur_nom", "auteur_prenom", "date_publication", "genre", "isbn", "exemplaires_disponibles"],
-        "adherant": ["nom", "prenom", "email", "telephone", "adresse"]
+        "ouvrages": ["isbn", "titre", "nb_pages", "editeur", "theme"],
+        "adherant": ["nom", "prenom", "email", "telephone", "niveau", "annee", "departement"]
     }
   },
   S3: {
@@ -47,17 +46,45 @@ const SOURCES_CONFIG = {
     color: "#018BFF",
     entities: ["Book", "Writer", "Member", "Professor", "Copy", "Theme"],
     idColMap: {
-      "Book": "id", "Writer": "id", "Member": "id",
-      "Professor": "id", "Copy": "id", "Theme": "id"
+      "Book": "_id", "Writer": "_id", "Member": "_id",
+      "Professor": "_id", "Copy": "_id", "Theme": "_id"
     },
     schema: {
-        "Book": ["title", "publish_year", "isbn", "language"],
-        "Writer": ["first_name", "last_name", "birth_date"],
-        "Member": ["first_name", "last_name", "email", "join_date"],
-        "Professor": ["first_name", "last_name", "email", "department"],
-        "Copy": ["status", "acquisition_date"],
-        "Theme": ["name", "description"]
+        "Book": ["isbn", "titre", "annee_publication", "theme", "auteur_id"],
+        "Writer": ["nom", "prenom", "nationalite"],
+        "Member": ["nom", "prenom", "email"],
+        "Professor": ["nom", "prenom", "departement"],
+        "Copy": ["code_barre", "etat", "disponibilite"],
+        "Theme": ["nom_theme"]
     }
+  }
+};
+
+const FK_MAP = {
+  "S1": {
+    "auteur_id": "AUTEUR",
+    "livre_id": "LIVRE",
+    "exemplaire_id": "EXEMPLAIRE",
+    "adherent_id": "ADHERENT",
+    "enseignant_id": "ENSEIGNANT",
+  },
+  "S3": {
+    "auteur_id": "Writer",
+    "livre_id": "Book"
+  }
+};
+
+const FK_VAL_COL = {
+  "S1": {
+    "auteur_id": "auteur_id",
+    "livre_id": "livre_id",
+    "exemplaire_id": "exemplaire_id",
+    "adherent_id": "adherent_id",
+    "enseignant_id": "enseignant_id"
+  },
+  "S3": {
+    "auteur_id": "writer_id",
+    "livre_id": "isbn"
   }
 };
 
@@ -74,6 +101,7 @@ export default function SourceCrudPage() {
   const [form, setForm] = useState({});
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [fkOptions, setFkOptions] = useState({});
 
   const getExpectedFields = (src, ent) => {
     return SOURCES_CONFIG[src].schema?.[ent] || [];
@@ -93,18 +121,15 @@ export default function SourceCrudPage() {
       
       let keys = [];
       if (data.length > 0) {
-        // Generate columns based on the first row's keys
         keys = Object.keys(data[0]).filter(k => k !== "_source" && k !== "_id");
         if (source === "S1") keys.unshift(SOURCES_CONFIG["S1"].idColMap[entity]);
         else if (source === "S2" || source === "S3") keys.unshift("_id");
       } else {
-        // Fallback to predefined schema when no data exists
         keys = [...getExpectedFields(source, entity)];
-        if (source === "S1") keys.unshift(SOURCES_CONFIG["S1"].idColMap[entity]);
+        if (source === "S1") keys.unshift(SOURCES_CONFIG["S1"].idColMap[entity] || "_id");
         else keys.unshift("_id");
       }
       
-      // Remove duplicates and generate column defs
       const uniqueKeys = [...new Set(keys)];
       setColumns(uniqueKeys.map(k => ({ key: k, label: k, width: 150 })));
     } catch (e) {
@@ -129,6 +154,27 @@ export default function SourceCrudPage() {
     return row["_id"];
   };
 
+  const fetchFkOptions = async (formKeys) => {
+    const map = FK_MAP[source];
+    if (!map) return;
+    
+    const newOptions = { ...fkOptions };
+    for (let key of formKeys) {
+      if (map[key] && !newOptions[key]) {
+        try {
+          const targetEntity = map[key];
+          let data = [];
+          if (source === "S1") data = await api.s1Read(targetEntity);
+          if (source === "S3") data = await api.s3Read(targetEntity);
+          newOptions[key] = data;
+        } catch(e) {
+          console.error(`Failed to load FK options for ${key}`, e);
+        }
+      }
+    }
+    setFkOptions(newOptions);
+  };
+
   const openAdd = () => {
     const emptyForm = {};
     const expectedFields = getExpectedFields(source, entity);
@@ -146,16 +192,15 @@ export default function SourceCrudPage() {
     setForm(emptyForm);
     setEditId(null);
     setOpen(true);
+    fetchFkOptions(Object.keys(emptyForm));
   };
 
   const openEdit = (row) => {
     const editForm = { ...row };
-    // Remove internal id fields from the edit form so they aren't edited directly
     delete editForm["_id"];
-    delete editForm[SOURCES_CONFIG["S1"].idColMap[entity]];
+    if (source === "S1") delete editForm[SOURCES_CONFIG["S1"].idColMap[entity]];
     delete editForm["_source"];
     
-    // Convert complex objects/arrays to JSON strings for editing (e.g. MongoDB arrays)
     Object.keys(editForm).forEach(k => {
       if (typeof editForm[k] === 'object' && editForm[k] !== null) {
         editForm[k] = JSON.stringify(editForm[k]);
@@ -165,6 +210,7 @@ export default function SourceCrudPage() {
     setForm(editForm);
     setEditId(getIdVal(row));
     setOpen(true);
+    fetchFkOptions(Object.keys(editForm));
   };
 
   const handleDelete = async (row) => {
@@ -183,7 +229,6 @@ export default function SourceCrudPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Parse JSON strings back to objects if they look like JSON
       const submitData = { ...form };
       Object.keys(submitData).forEach(k => {
         if (typeof submitData[k] === 'string' && (submitData[k].startsWith('{') || submitData[k].startsWith('['))) {
@@ -217,7 +262,6 @@ export default function SourceCrudPage() {
       minHeight: '80vh',
       position: 'relative'
     }}>
-      {/* Dynamic Background Blurs for Premium Feel */}
       <Box sx={{
         position: 'absolute', top: -100, left: -100, width: 300, height: 300,
         background: 'radial-gradient(circle, rgba(37,99,235,0.15) 0%, rgba(0,0,0,0) 70%)',
@@ -366,20 +410,49 @@ export default function SourceCrudPage() {
 
         <DialogContent sx={{ px: 3, py: 2 }}>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
-            {Object.keys(form).map(key => (
-              <TextField
-                key={key}
-                fullWidth 
-                label={key}
-                variant="outlined"
-                value={form[key] || ""}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                multiline={typeof form[key] === 'string' && form[key].length > 50}
-                InputProps={{
-                  sx: { borderRadius: 2 }
-                }}
-              />
-            ))}
+            {Object.keys(form).map(key => {
+              const isFk = FK_MAP[source] && FK_MAP[source][key];
+              const options = fkOptions[key] || [];
+
+              if (isFk) {
+                return (
+                  <FormControl key={key} fullWidth variant="outlined">
+                    <InputLabel>{key}</InputLabel>
+                    <Select
+                      label={key}
+                      value={form[key] || ""}
+                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {options.map((opt, i) => {
+                         const optId = opt[FK_VAL_COL[source]?.[key]] || opt["_id"] || opt[key];
+                         const labelParts = Object.entries(opt)
+                           .filter(([k,v]) => k !== "_source" && k !== "_id" && !k.endsWith("_id"))
+                           .map(([k,v]) => v)
+                           .slice(0, 2);
+                         const label = `${optId} - ${labelParts.join(" ")}`;
+                         return <MenuItem key={optId || i} value={optId}>{label}</MenuItem>;
+                      })}
+                    </Select>
+                  </FormControl>
+                );
+              }
+
+              return (
+                <TextField
+                  key={key}
+                  fullWidth 
+                  label={key}
+                  variant="outlined"
+                  value={form[key] || ""}
+                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  multiline={typeof form[key] === 'string' && form[key].length > 50}
+                  InputProps={{
+                    sx: { borderRadius: 2 }
+                  }}
+                />
+              );
+            })}
             
             {Object.keys(form).length === 0 && (
               <Box sx={{ textAlign: 'center', py: 4, bgcolor: 'grey.50', borderRadius: 2 }}>
@@ -389,7 +462,6 @@ export default function SourceCrudPage() {
               </Box>
             )}
             
-            {/* Allow adding custom attributes for schema-less databases */}
             {(source === "S2" || source === "S3") && (
               <Box sx={{ display: 'flex', justifyContent: 'flex-start', pt: 1 }}>
                 <Chip 
@@ -435,3 +507,4 @@ export default function SourceCrudPage() {
     </Box>
   );
 }
+
