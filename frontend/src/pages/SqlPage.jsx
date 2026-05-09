@@ -136,8 +136,8 @@ export default function SqlPage() {
     <Box sx={{ p: 4, maxWidth: 1500, mx: "auto" }}>
 
       <PageHeader
-        title="Requêtes sur le Schéma Global"
-        subtitle="Interrogation unifiée des 3 sources de données — S1 (MySQL) · S2 (MongoDB) · S3 (Neo4j)"
+        title="Requêtes sur le Schéma Global — GAV & LAV"
+        subtitle="Basculez entre GAV (Global As View) et LAV (Local As View — Algorithme Bucket) · S1 (MySQL) · S2 (MongoDB) · S3 (Neo4j)"
       />
 
       <Box display="grid" gridTemplateColumns="280px 1fr" gap={3}>

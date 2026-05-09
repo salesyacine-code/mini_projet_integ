@@ -21,8 +21,6 @@ import SqlPage from "./pages/SqlPage";
 import HealthPage from "./pages/HealthPage";
 import SourcesPage from "./pages/SourcesPage";
 import SourceCrudPage from "./pages/SourceCrudPage";
-import LavPage from "./pages/LavPage";
-
 const TITLES = {
   // Vue d'ensemble
   dashboard:   "Tableau de bord",
@@ -38,12 +36,8 @@ const TITLES = {
   // Activités (GAV)
   emprunts:    "Emprunts",
   suggestions: "Suggestions",
-  // Sources locales
-  sources:     "Comparaison par Source",
-  sourcecrud:  "CRUD Source Directe",
-  // Médiation & Requêtes
-  lav:         "LAV — Local As View",
-  sql:         "Requêtes SQL Directes",
+  // Requêtes GAV & LAV (unifié)
+  sql:         "Requêtes — Mode GAV & LAV",
   // Système
   health:      "État des Connexions",
 };
@@ -66,8 +60,6 @@ function renderPage(page) {
     // Sources locales
     case "sources":     return <SourcesPage />;
     case "sourcecrud":  return <SourceCrudPage />;
-    // Médiation
-    case "lav":         return <LavPage />;
     case "sql":         return <SqlPage />;
     // Système
     case "health":      return <HealthPage />;

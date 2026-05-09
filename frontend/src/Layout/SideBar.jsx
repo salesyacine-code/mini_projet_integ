@@ -15,77 +15,25 @@ import EmojiPeopleIcon from "@mui/icons-material/EmojiPeople";
 import StyleIcon from "@mui/icons-material/Style";
 import CategoryIcon from "@mui/icons-material/Category";
 import ChatIcon from "@mui/icons-material/Chat";
-import CompareIcon from "@mui/icons-material/Compare";
-import EditNoteIcon from "@mui/icons-material/EditNote";
-import CodeIcon from "@mui/icons-material/Code";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 // ═══════════════════════════════════════════════════════════════
-// MENU — 7 sections, each owns ONE concern (Single Responsibility)
+// MENU — 1 seule section (Requêtes unifiées)
 // ═══════════════════════════════════════════════════════════════
 const MENU = [
-
-  // ① OVERVIEW — high-level stats only
+  // REQUÊTES — moteur GAV & LAV unifié sur le schéma global
   {
-    group: "Vue d'ensemble",
+    group: "Requêtes",
     items: [
-      { id: "dashboard", label: "Tableau de bord", icon: <DashboardIcon /> },
-    ],
-  },
-
-  // ② CATALOGUE — unified GAV read views for bibliographic entities
-  {
-    group: "Catalogue Global",
-    items: [
-      { id: "livres",      label: "Livres",      badge: "GAV", icon: <MenuBookIcon /> },
-      { id: "auteurs",     label: "Auteurs",      badge: "GAV", icon: <PersonIcon /> },
-      { id: "themes",      label: "Thèmes",       badge: "GAV", icon: <StyleIcon /> },
-      { id: "exemplaires", label: "Exemplaires",  badge: "GAV", icon: <CategoryIcon /> },
-    ],
-  },
-
-  // ③ PEOPLE — GAV views of persons (split by role)
-  {
-    group: "Personnes",
-    items: [
-      { id: "personnes",   label: "Toutes",       badge: "GAV", icon: <GroupIcon /> },
-      { id: "adherents",   label: "Adhérents",    badge: "GAV", icon: <EmojiPeopleIcon /> },
-      { id: "enseignants", label: "Enseignants",  badge: "GAV", icon: <SchoolIcon /> },
-    ],
-  },
-
-  // ④ ACTIVITIES — transactions & recommendations
-  {
-    group: "Activités",
-    items: [
-      { id: "emprunts",    label: "Emprunts",    badge: "S1·S3", badgeColor: "#f59e0b", badgeText: "#fff", icon: <LocalLibraryIcon /> },
-      { id: "suggestions", label: "Suggestions", badge: "GAV",   icon: <ChatIcon /> },
-    ],
-  },
-
-  // ⑤ LOCAL SOURCES — direct access to S1/S2/S3 without mediation
-  {
-    group: "Sources Locales",
-    items: [
-      { id: "sourcecrud", label: "CRUD Directe",          icon: <EditNoteIcon />, highlight: true },
-      { id: "sources",    label: "Comparaison Sources",   icon: <CompareIcon />,  badge: "S1·S2·S3", highlight: true },
-    ],
-  },
-
-  // ⑥ MEDIATION & QUERIES — LAV engine + raw SQL
-  {
-    group: "Médiation & Requêtes",
-    items: [
-      { id: "lav", label: "LAV — Local As View", icon: <AccountTreeIcon />, highlight: true },
-      { id: "sql", label: "Requêtes SQL",        icon: <CodeIcon /> },
-    ],
-  },
-
-  // ⑦ SYSTEM — infrastructure health
-  {
-    group: "Système",
-    items: [
-      { id: "health", label: "État des connexions", icon: <HealingIcon /> },
+      {
+        id: "sql",
+        label: "Requêtes GAV & LAV",
+        icon: <AccountTreeIcon />,
+        highlight: true,
+        badge: "GAV · LAV",
+        badgeColor: "#6366f1",
+        badgeText: "#fff",
+      },
     ],
   },
 ];
