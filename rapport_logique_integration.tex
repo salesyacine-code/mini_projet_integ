@@ -1,0 +1,135 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\title{
+  \textbf{Rapport Détaillé : Logique d'Intégration de Données}\\[0.5cm]
+  \large Architecture Multi-Sources, Gestion des Conflits et Algorithmes GAV / LAV
+}
+\author{Projet de Médiation de Données}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Ce rapport détaille la réflexion conceptuelle, l'architecture logique et les choix algorithmiques mis en œuvre pour fusionner trois sources de données hétérogènes en un système de médiation unifié. L'accent est porté sur la sémantique de l'information, la gestion des conflits lors de la superposition des données, et le fonctionnement interne des algorithmes GAV (Global As View) et LAV (Local As View).
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ================================================================
+\section{La Conception du Schéma Global}
+% ================================================================
+
+L'intégration de données hétérogènes nécessite un modèle commun pour masquer les différences structurelles des bases de données sous-jacentes (Relationnelle, Documentaire, Orientée Graphe). 
+
+La première étape logique a consisté à concevoir un \textbf{Schéma Global} unifié. Celui-ci agit comme une « lingua franca » pour le système de médiation. Nous avons identifié et modélisé 10 entités conceptuelles globales : \texttt{AUTEUR}, \texttt{LIVRE}, \texttt{EXEMPLAIRE}, \texttt{THEME}, \texttt{PERSONNE}, \texttt{ADHERENT}, \texttt{ENSEIGNANT}, \texttt{EMPRUNT}, \texttt{SUGGESTION}, et \texttt{APPARTIENT\_THEME}.
+
+Toute requête soumise par l'utilisateur est exprimée exclusivement en termes de ce schéma global. Le médiateur est ensuite chargé de la traduire et de l'exécuter sur les sources locales.
+
+% ================================================================
+\section{Processus de Mapping et Mise en Conformité}
+% ================================================================
+
+Pour faire correspondre les données locales au schéma global, une couche d'abstraction logique (les Wrappers) a été mise en place. La logique de ces modules suit un pipeline strict de transformation sémantique :
+
+\begin{enumerate}
+    \item \textbf{Extraction Native} : Récupération des données brutes en respectant les paradigmes de chaque source.
+    \item \textbf{Alignement Sémantique} : Mapping des champs locaux vers les attributs du schéma global.
+    \begin{itemize}
+        \item \textit{Exemple structurel} : Dans la source 2 (S2), le champ \texttt{ouvrages.titre\_long} est logiquement mappé vers l'attribut \texttt{LIVRE.titre}.
+        \item \textit{Exemple conceptuel} : Dans la source 3 (S3), l'entité \texttt{Writer} possède un attribut \texttt{full\_name}. La logique de mise en conformité se charge de scinder cette chaîne en \texttt{nom} et \texttt{prenom} pour correspondre aux exigences du schéma global.
+    \end{itemize}
+    \item \textbf{Mise en Conformité (Typage)} : Standardisation des formats de données. Un statut « disponible » exprimé par "oui"/"non" ou "available" est systématiquement normalisé en un booléen universel.
+\end{enumerate}
+
+% ================================================================
+\section{Gestion des Conflits et Superposition (Fusion)}
+% ================================================================
+
+Lorsque les données de plusieurs sources sont agrégées, le système fait face à des redondances (la même entité existe dans plusieurs sources) et à des asymétries d'information.
+
+\subsection{La Déduplication par Clé Sémantique Naturelle}
+Puisque les identifiants techniques (clés primaires, ObjectIDs, IDs de nœuds) sont locaux à chaque base et n'ont aucune valeur globale, la fusion s'appuie sur des \textbf{clés sémantiques naturelles} :
+\begin{itemize}
+    \item Pour l'entité \texttt{LIVRE}, l'unicité est garantie par l'\texttt{isbn}.
+    \item Pour l'entité \texttt{AUTEUR}, le dédoublonnage s'effectue via le couple \texttt{(nom, prenom)}.
+    \item Pour les \texttt{PERSONNES} (Adhérents et Enseignants), c'est l'\texttt{email} qui sert de pivot.
+\end{itemize}
+
+\subsection{L'Algorithme de Fusion et d'Enrichissement}
+Lors de la remontée des données, la logique de superposition applique un algorithme de fusion sémantique :
+\begin{enumerate}
+    \item Un registre (dictionnaire) temporaire est initialisé.
+    \item Pour chaque tuple reçu, sa clé naturelle est calculée.
+    \item Si la clé n'existe pas dans le registre, le tuple y est inséré.
+    \item Si la clé \textbf{existe déjà} (détection d'un conflit), l'algorithme procède à un \textbf{enrichissement} : il compare chaque attribut. Si le tuple existant possède une valeur nulle pour un attribut donné, et que le nouveau tuple fournit cette valeur, la donnée est complétée. Les informations existantes ne sont jamais écrasées, ce qui garantit la préservation des données prioritaires.
+\end{enumerate}
+
+% ================================================================
+\section{Logique de l'Approche GAV (Global As View)}
+% ================================================================
+
+Dans le paradigme \textbf{GAV}, le schéma global est défini de manière prescriptive comme une union explicite des sources locales.
+
+\subsection{Principe Algorithmique}
+Le médiateur contient des règles d'intégration codées « en dur ». Par exemple, l'entité globale \texttt{AUTEUR} est définie comme l'union des auteurs de S1, des contributeurs de S2 ayant le rôle 'auteur', et des nœuds \texttt{Writer} de S3.
+
+\subsection{Mécanique d'Exécution}
+Lorsqu'une requête GAV est émise :
+\begin{itemize}
+    \item Le médiateur déclenche simultanément les appels vers les trois sources (parallélisation pour minimiser le temps d'attente global).
+    \item Dès la réception de l'ensemble des jeux de données, il applique l'algorithme de fusion et de déduplication.
+\end{itemize}
+\textbf{Avantage} : L'exécution est extrêmement rapide et prédictible.\\
+\textbf{Inconvénient} : Cette approche est rigide ; l'ajout d'une nouvelle base de données impose de redéfinir manuellement les requêtes du médiateur.
+
+% ================================================================
+\section{Logique de l'Approche LAV (Local As View) et Algorithme Bucket}
+% ================================================================
+
+L'approche \textbf{LAV} renverse la philosophie d'intégration. Ici, le médiateur ne possède aucune règle d'assemblage globale. Ce sont les sources locales qui déclarent mathématiquement leur contenu vis-à-vis du schéma global. 
+
+Pour construire une réponse à la volée, le système s'appuie sur l'\textbf{Algorithme Bucket (Seau)}.
+
+\subsection{Fonctionnement de l'Algorithme Bucket}
+Le processus de réécriture de la requête suit plusieurs étapes conceptuelles strictes :
+
+\begin{enumerate}
+    \item \textbf{Création des Buckets} : 
+    Pour chaque attribut demandé par l'utilisateur (ex: \texttt{isbn}, \texttt{titre}, \texttt{editeur}), le moteur LAV crée un "seau". Il place dans ce seau toutes les vues (sources) capables de fournir cet attribut. Si seule S2 possède l'\texttt{editeur}, le seau \texttt{[editeur]} ne contiendra que S2.
+    
+    \item \textbf{Génération des Combinaisons (Produit Cartésien)} :
+    Le moteur calcule toutes les combinaisons possibles en sélectionnant une vue dans chaque seau. Cela permet d'identifier quels groupes de sources, une fois joints, peuvent satisfaire l'intégralité de la requête.
+    
+    \item \textbf{Élimination et Choix du Plan d'Exécution} :
+    L'algorithme analyse les combinaisons générées pour écarter celles qui sont redondantes (où une source n'apporte aucune donnée nouvelle) ou celles qui violent les conditions de filtrage de la requête. Il déduit ainsi le plan optimal (ex: "Interroger S1 et S2, car S3 est inutile pour cette projection").
+    
+    \item \textbf{Exécution Dynamique} :
+    Les sources retenues par le plan sont interrogées. Les tuples sont rapatriés, filtrés localement, puis soumis à la routine de fusion sémantique.
+\end{enumerate}
+
+% ================================================================
+\section{Superposition des Approches et Conclusion}
+% ================================================================
+
+La force de cette architecture réside dans la **coexistence harmonieuse des deux algorithmes** au sein d'un même médiateur :
+
+\begin{itemize}
+    \item \textbf{L'approche GAV} assure la stabilité et la rapidité des interfaces de consultation standard (comme les catalogues complets), car la structure de fusion est déterministe.
+    \item \textbf{L'approche LAV} propulse le moteur de requêtes personnalisées. En permettant aux utilisateurs de projeter uniquement les attributs qui les intéressent, l'algorithme Bucket déduit dynamiquement le plan d'exécution, économisant ainsi des appels réseau coûteux vers des sources non pertinentes.
+\end{itemize}
+
+Ce double système rend la plateforme d'intégration résiliente, évolutive et capable de résoudre intelligemment les asymétries d'information propres à la manipulation de bases de données hétérogènes.
+
+\end{document}
